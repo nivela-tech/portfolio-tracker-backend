@@ -22,6 +22,11 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.apache.poi:poi-ooxml:5.2.5' // For XLSX
     implementation 'com.opencsv:opencsv:5.9' // For CSV
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5' // Or jjwt-gson if you use Gson
     runtimeOnly 'com.h2database:h2'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

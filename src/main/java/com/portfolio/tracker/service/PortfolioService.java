@@ -2,6 +2,7 @@ package com.portfolio.tracker.service;
 
 import com.portfolio.tracker.model.PortfolioEntry;
 import com.portfolio.tracker.model.PortfolioAccount;
+import com.portfolio.tracker.model.User;
 import com.portfolio.tracker.repository.PortfolioRepository;
 import com.portfolio.tracker.model.EntryType;
 import jakarta.persistence.EntityNotFoundException;
@@ -29,14 +30,14 @@ public class PortfolioService {
     private PortfolioAccountService accountService;
 
     private void validateEntry(PortfolioEntry entry) {
-        logger.debug("Validating entry data");
+        logger.debug("Validating entry data for user: {}", entry.getUser() != null ? entry.getUser().getEmail() : "null");
         if (entry.getType() == null) {
             logger.warn("Validation failed: Entry type is null");
             throw new IllegalArgumentException("Entry type cannot be null");
         }
-        if (entry.getAccountId() == null) {
-            logger.warn("Validation failed: Account ID is null");
-            throw new IllegalArgumentException("Account ID cannot be null");
+        if (entry.getAccountId() == null && entry.getAccount() == null) {
+            logger.warn("Validation failed: Account ID or Account object must be present");
+            throw new IllegalArgumentException("Account ID or Account object must be present");
         }
         if (entry.getAmount() == null || entry.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             logger.warn("Validation failed: Invalid amount");
@@ -50,243 +51,210 @@ public class PortfolioService {
             logger.warn("Validation failed: Country is empty");
             throw new IllegalArgumentException("Country cannot be empty");
         }
-        logger.debug("Entry validation successful");
+        if (entry.getUser() == null) {
+            logger.warn("Validation failed: Entry must be associated with a user");
+            throw new IllegalArgumentException("Entry must have an associated user.");
+        }
+        logger.debug("Entry validation successful for user: {}", entry.getUser().getEmail());
     }
 
-    public PortfolioEntry addEntry(PortfolioEntry entry) {
-        logger.info("Adding new portfolio entry for account ID: {}", entry.getAccountId());
+    public PortfolioEntry addEntry(PortfolioEntry entry, User user) {
+        logger.info("Adding new portfolio entry for account ID: {} by user: {}", entry.getAccountId(), user.getEmail());
         try {
-            // Ensure accountId is set from account object if account is present
-            if (entry.getAccount() != null && entry.getAccountId() == null) {
-                entry.setAccountId(entry.getAccount().getId());
-            } else if (entry.getAccount() == null && entry.getAccountId() != null) {
-                // If accountId is provided but account object is not, fetch and set account
-                PortfolioAccount account = accountService.getAccountById(entry.getAccountId());
-                entry.setAccount(account); // This will also set the transient accountId via custom setter
-            }
-
-            validateEntry(entry);
-            // Account should be set by now if accountId was valid
-            if (entry.getAccount() == null && entry.getAccountId() != null) {
-                 // This case should ideally be caught by validateEntry if accountId implies a non-existent account
-                 // or handled by ensuring account is fetched and set before validation.
-                 // For robustness, re-fetch if somehow account is null but accountId is not.
-                PortfolioAccount account = accountService.getAccountById(entry.getAccountId());
+            entry.setUser(user);
+            if (entry.getAccountId() != null) {
+                PortfolioAccount account = accountService.getAccountByIdAndUser(entry.getAccountId(), user);
                 entry.setAccount(account);
+            } else if (entry.getAccount() != null && entry.getAccount().getId() != null) {
+                PortfolioAccount account = accountService.getAccountByIdAndUser(entry.getAccount().getId(), user);
+                entry.setAccount(account);
+                entry.setAccountId(account.getId());
+            } else {
+                logger.warn("Account ID or a valid Account object must be provided for user: {}", user.getEmail());
+                throw new IllegalArgumentException("Account ID or a valid Account object must be provided.");
             }
-            
+            validateEntry(entry);
             PortfolioEntry savedEntry = portfolioRepository.save(entry);
-            logger.info("Successfully added entry with ID: {}", savedEntry.getId());
+            logger.info("Successfully added entry with ID: {} for user: {}", savedEntry.getId(), user.getEmail());
             return savedEntry;
+        } catch (EntityNotFoundException enfe) {
+            logger.warn("Failed to add entry for user {}: Account not found or not accessible by user. Details: {}", user.getEmail(), enfe.getMessage());
+            throw enfe;
         } catch (Exception e) {
-            logger.error("Failed to add portfolio entry: {}", e.getMessage(), e);
+            logger.error("Failed to add portfolio entry for user {}: {}", user.getEmail(), e.getMessage(), e);
             throw e;
         }
     }
 
-    public PortfolioEntry updateEntry(PortfolioEntry entryFromRequest) {
-        logger.info("Updating portfolio entry with ID: {}", entryFromRequest.getId());
+    public PortfolioEntry updateEntry(PortfolioEntry entryFromRequest, User user) {
+        logger.info("Updating portfolio entry with ID: {} by user: {}", entryFromRequest.getId(), user.getEmail());
+        if (entryFromRequest.getId() == null) {
+            logger.warn("Update failed: Entry ID is null for user: {}", user.getEmail());
+            throw new IllegalArgumentException("Entry ID cannot be null for an update operation.");
+        }
         try {
-            PortfolioEntry existingEntry = portfolioRepository.findById(entryFromRequest.getId())
+            PortfolioEntry existingEntry = portfolioRepository.findByIdAndUser(entryFromRequest.getId(), user)
                 .orElseThrow(() -> {
-                    logger.warn("Entry not found with ID: {}", entryFromRequest.getId());
-                    return new EntityNotFoundException("Entry not found with ID: " + entryFromRequest.getId());
+                    logger.warn("Entry not found with ID: {} for user: {}", entryFromRequest.getId(), user.getEmail());
+                    return new EntityNotFoundException("Entry not found with ID: " + entryFromRequest.getId() + " for user " + user.getEmail());
                 });
 
-            // Update mutable fields of existingEntry from entryFromRequest
-            if (entryFromRequest.getType() != null) {
-                existingEntry.setType(entryFromRequest.getType());
-            }
-            if (entryFromRequest.getSource() != null) {
-                existingEntry.setSource(entryFromRequest.getSource());
-            }
-            if (entryFromRequest.getAmount() != null) {
-                existingEntry.setAmount(entryFromRequest.getAmount());
-            }
-            if (entryFromRequest.getCurrency() != null) {
-                existingEntry.setCurrency(entryFromRequest.getCurrency());
-            }
-            if (entryFromRequest.getCountry() != null) {
-                existingEntry.setCountry(entryFromRequest.getCountry());
-            }
-            // dateAdded is typically not updated this way.
+            existingEntry.setType(entryFromRequest.getType());
+            existingEntry.setSource(entryFromRequest.getSource());
+            existingEntry.setAmount(entryFromRequest.getAmount());
+            existingEntry.setCurrency(entryFromRequest.getCurrency());
+            existingEntry.setCountry(entryFromRequest.getCountry());
+            existingEntry.setNotes(entryFromRequest.getNotes());
 
-            // Handle account change if accountId is provided in the request
-            if (entryFromRequest.getAccountId() != null &&
-                (existingEntry.getAccount() == null || !entryFromRequest.getAccountId().equals(existingEntry.getAccount().getId()))) {
-                PortfolioAccount newAccount = accountService.getAccountById(entryFromRequest.getAccountId());
-                existingEntry.setAccount(newAccount); // Custom setter updates transient accountId
+            Long requestedAccountId = entryFromRequest.getAccountId();
+            if (entryFromRequest.getAccount() != null && entryFromRequest.getAccount().getId() != null) {
+                requestedAccountId = entryFromRequest.getAccount().getId();
             }
 
-            // Ensure the transient accountId on existingEntry is synchronized before validation
+            if (requestedAccountId != null &&
+                (existingEntry.getAccount() == null || !requestedAccountId.equals(existingEntry.getAccount().getId()))) {
+                PortfolioAccount newAccount = accountService.getAccountByIdAndUser(requestedAccountId, user);
+                existingEntry.setAccount(newAccount);
+            }
+            
             if (existingEntry.getAccount() != null) {
                 existingEntry.setAccountId(existingEntry.getAccount().getId());
             } else {
-                // This case should ideally not happen if account_id is non-nullable in DB
-                // and an entry always has an account.
-                existingEntry.setAccountId(null);
+                 logger.error("Critical: Entry ID {} (User: {}) is not associated with an account after update attempt.", existingEntry.getId(), user.getEmail());
+                throw new IllegalStateException("Entry must be associated with an account.");
             }
             
-            validateEntry(existingEntry); // Validate the updated existingEntry
-            
+            validateEntry(existingEntry);
             PortfolioEntry updatedEntry = portfolioRepository.save(existingEntry);
-            logger.info("Successfully updated entry with ID: {}", updatedEntry.getId());
+            logger.info("Successfully updated entry with ID: {} for user: {}", updatedEntry.getId(), user.getEmail());
             return updatedEntry;
+        } catch (EntityNotFoundException enfe) {
+            logger.warn("Failed to update entry for user {}: {}. Details: {}", user.getEmail(), entryFromRequest.getId(), enfe.getMessage());
+            throw enfe;
         } catch (Exception e) {
-            logger.error("Failed to update portfolio entry: {}", e.getMessage(), e);
+            logger.error("Failed to update portfolio entry ID {} for user {}: {}", entryFromRequest.getId(), user.getEmail(), e.getMessage(), e);
             throw e;
         }
     }
 
-    public void deleteEntry(Long id) {
-        logger.info("Deleting portfolio entry with ID: {}", id);
+    public void deleteEntry(Long id, User user) {
+        logger.info("Deleting portfolio entry with ID: {} by user: {}", id, user.getEmail());
         try {
-            if (!portfolioRepository.existsById(id)) {
-                logger.warn("Entry not found with ID: {}", id);
-                throw new EntityNotFoundException("Entry not found with ID: " + id);
-            }
-            
-            portfolioRepository.deleteById(id);
-            logger.info("Successfully deleted entry with ID: {}", id);
-        } catch (Exception e) {
-            logger.error("Failed to delete portfolio entry: {}", e.getMessage(), e);
+            PortfolioEntry entry = portfolioRepository.findByIdAndUser(id, user)
+                .orElseThrow(() -> {
+                    logger.warn("Entry not found with ID: {} for user: {} during delete attempt.", id, user.getEmail());
+                    return new EntityNotFoundException("Entry not found with ID: " + id + " for user " + user.getEmail());
+                });
+            portfolioRepository.delete(entry);
+            logger.info("Successfully deleted entry with ID: {} for user: {}", id, user.getEmail());
+        } catch (EntityNotFoundException enfe) {
+            logger.warn("Failed to delete entry for user {}: Entry ID {} not found or not accessible. Details: {}", user.getEmail(), id, enfe.getMessage());
+            throw enfe;
+        }
+         catch (Exception e) {
+            logger.error("Failed to delete portfolio entry ID {} for user {}: {}", id, user.getEmail(), e.getMessage(), e);
             throw e;
         }
     }
 
-    public List<PortfolioEntry> getAllEntries() {
-        logger.info("Fetching all portfolio entries");
-        try {
-            List<PortfolioEntry> entries = portfolioRepository.findAll();
-            logger.info("Retrieved {} entries", entries.size());
-            return entries;
-        } catch (Exception e) {
-            logger.error("Failed to fetch all entries: {}", e.getMessage(), e);
-            throw e;
-        }
+    public List<PortfolioEntry> getAllEntriesByUser(User user) {
+        logger.info("Fetching all portfolio entries for user: {}", user.getEmail());
+        return portfolioRepository.findByUserOrderByDateAddedDesc(user);
     }
 
-    public List<PortfolioEntry> getEntriesByAccount(Long accountId) {
-        logger.info("Fetching entries for account ID: {}", accountId);
-        try {            List<PortfolioEntry> entries = portfolioRepository.findByAccount_IdOrderByDateAddedDesc(accountId);
-            logger.info("Retrieved {} entries for account {}", entries.size(), accountId);
-            return entries;
-        } catch (Exception e) {
-            logger.error("Failed to fetch entries for account {}: {}", accountId, e.getMessage(), e);
-            throw e;
-        }
+    public List<PortfolioEntry> getEntriesByAccountAndUser(Long accountId, User user) {
+        logger.info("Fetching entries for account ID: {} for user: {}", accountId, user.getEmail());
+        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user); 
+        return portfolioRepository.findByAccountAndUserOrderByDateAddedDesc(account, user);
     }
 
-    public List<PortfolioEntry> getEntriesByCurrency(String currency) {
-        return portfolioRepository.findByCurrency(currency);
+    public List<PortfolioEntry> getEntriesByCurrencyAndUser(String currency, User user) {
+        logger.info("Fetching entries for currency: {} for user: {}", currency, user.getEmail());
+        return portfolioRepository.findByCurrencyAndUser(currency, user);
     }
 
-    public List<PortfolioEntry> getEntriesByCurrencyAndAccount(String currency, Long accountId) {
-        return portfolioRepository.findByCurrencyAndAccount_Id(currency, accountId);
+    public List<PortfolioEntry> getEntriesByCurrencyAndAccountAndUser(String currency, Long accountId, User user) {
+        logger.info("Fetching entries for currency: {}, account ID: {} for user: {}", currency, accountId, user.getEmail());
+        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
+        return portfolioRepository.findByCurrencyAndAccountAndUser(currency, account, user);
     }
 
-    public List<PortfolioEntry> getEntriesByCountry(String country) {
-        return portfolioRepository.findByCountry(country);
+    public List<PortfolioEntry> getEntriesByCountryAndUser(String country, User user) {
+        logger.info("Fetching entries for country: {} for user: {}", country, user.getEmail());
+        return portfolioRepository.findByCountryAndUser(country, user);
     }
 
-    public List<PortfolioEntry> getEntriesByCountryAndAccount(String country, Long accountId) {
-        return portfolioRepository.findByCountryAndAccount_Id(country, accountId);
+    public List<PortfolioEntry> getEntriesByCountryAndAccountAndUser(String country, Long accountId, User user) {
+        logger.info("Fetching entries for country: {}, account ID: {} for user: {}", country, accountId, user.getEmail());
+        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
+        return portfolioRepository.findByCountryAndAccountAndUser(country, account, user);
     }
 
-    public List<PortfolioEntry> getEntriesBySource(String source) {
-        return portfolioRepository.findBySource(source);
+    public List<PortfolioEntry> getEntriesBySourceAndUser(String source, User user) {
+        logger.info("Fetching entries for source: {} for user: {}", source, user.getEmail());
+        return portfolioRepository.findBySourceAndUser(source, user);
     }
 
-    public List<PortfolioEntry> getEntriesBySourceAndAccount(String source, Long accountId) {
-        return portfolioRepository.findBySourceAndAccount_Id(source, accountId);
-    }    public List<PortfolioEntry> getCombinedPortfolioEntries() {
-        logger.info("Fetching all portfolio entries with account details");
-        try {
-            List<PortfolioEntry> entries = portfolioRepository.findAllByOrderByDateAddedDesc();
-            // Ensure account data is loaded for each entry
-            for (PortfolioEntry entry : entries) {
-                if (entry.getAccount() != null) {
-                    // Access the name to ensure it's loaded
-                    entry.getAccount().getName();
+    public List<PortfolioEntry> getEntriesBySourceAndAccountAndUser(String source, Long accountId, User user) {
+        logger.info("Fetching entries for source: {}, account ID: {} for user: {}", source, accountId, user.getEmail());
+        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
+        return portfolioRepository.findBySourceAndAccountAndUser(source, account, user);
+    }
+
+    public List<PortfolioEntry> getEntriesByTypeAndUser(EntryType type, User user) {
+        logger.info("Fetching entries for type: {} for user: {}", type, user.getEmail());
+        return portfolioRepository.findByTypeAndUser(type, user);
+    }
+
+    public List<PortfolioEntry> getEntriesByTypeAndAccountAndUser(EntryType type, Long accountId, User user) {
+        logger.info("Fetching entries for type: {}, account ID: {} for user: {}", type, accountId, user.getEmail());
+        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
+        return portfolioRepository.findByTypeAndAccountAndUser(type, account, user);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PortfolioEntry> getCombinedPortfolioEntriesForUser(User user) {
+        logger.info("Fetching combined portfolio entries for user: {}", user.getEmail());
+        List<PortfolioEntry> allEntries = portfolioRepository.findByUserOrderByDateAddedDesc(user);
+        Map<List<Object>, PortfolioEntry> combinedMap = allEntries.stream()
+            .collect(Collectors.toMap(
+                entry -> List.of(
+                    entry.getSource() != null ? entry.getSource() : "N/A",
+                    entry.getType(),
+                    entry.getCurrency(),
+                    entry.getCountry(),
+                    entry.getAccount() != null ? entry.getAccount().getId() : -1L
+                ),
+                Function.identity(),
+                (existing, replacement) -> {
+                    existing.setAmount(existing.getAmount().add(replacement.getAmount()));
+                    return existing;
                 }
-            }
-            logger.info("Retrieved {} entries with account details", entries.size());
-            return entries;
-        } catch (Exception e) {
-            logger.error("Failed to fetch entries with account details: {}", e.getMessage(), e);
-            throw e;
-        }
-    }    public Map<String, BigDecimal> getCombinedPortfolioByCurrency() {
-        List<PortfolioEntry> entries = getAllEntries();
-        return entries.stream()
-            .collect(Collectors.groupingBy(
-                PortfolioEntry::getCurrency,
-                Collectors.mapping(
-                    PortfolioEntry::getAmount,
-                    Collectors.reducing(
-                        BigDecimal.ZERO,
-                        Function.identity(),
-                        BigDecimal::add
-                    )
-                )
             ));
+        List<PortfolioEntry> result = combinedMap.values().stream().collect(Collectors.toList());
+        logger.info("Successfully combined {} entries into {} for user: {}", allEntries.size(), result.size(), user.getEmail());
+        return result;
     }
 
-    public Map<String, BigDecimal> getCombinedPortfolioByCountry() {
-        List<PortfolioEntry> entries = getAllEntries();
-        return entries.stream()
-            .collect(Collectors.groupingBy(
-                PortfolioEntry::getCountry,
-                Collectors.mapping(
-                    PortfolioEntry::getAmount,
-                    Collectors.reducing(
-                        BigDecimal.ZERO,
-                        Function.identity(),
-                        BigDecimal::add
-                    )
-                )
-            ));
+    @Transactional(readOnly = true)
+    public List<PortfolioEntry> getAllEntries() {
+        logger.warn("Fetching all portfolio entries across all users. Consider for admin use only.");
+        return portfolioRepository.findAll();
     }
 
-    public Map<String, BigDecimal> getCombinedPortfolioBySource() {
-        List<PortfolioEntry> entries = getAllEntries();
-        return entries.stream()
-            .collect(Collectors.groupingBy(
-                PortfolioEntry::getSource,
-                Collectors.mapping(
-                    PortfolioEntry::getAmount,
-                    Collectors.reducing(
-                        BigDecimal.ZERO,
-                        Function.identity(),
-                        BigDecimal::add
-                    )
-                )
-            ));
+    @Transactional(readOnly = true)
+    public PortfolioEntry getEntryById(Long id) {
+        logger.warn("Fetching entry by ID: {} across all users. Consider for admin use only.", id);
+        return portfolioRepository.findById(id)
+            .orElseThrow(() -> {
+                logger.warn("Admin access: Entry not found with ID: {}", id);
+                return new EntityNotFoundException("Entry not found with ID: " + id);
+            });
     }
-
-    public List<PortfolioEntry> getEntriesByType(EntryType type) {
-        logger.info("Fetching entries by type: {}", type);
-        return portfolioRepository.findByType(type);
-    }
-
-    public List<PortfolioEntry> getEntriesByTypeAndAccount(EntryType type, Long accountId) {
-        logger.info("Fetching entries by type: {} and account ID: {}", type, accountId);
-        return portfolioRepository.findByTypeAndAccount_Id(type, accountId);
-    }
-
-    public Map<String, BigDecimal> getCombinedPortfolioByType() {
-        logger.info("Getting combined portfolio grouped by type");
-        List<PortfolioEntry> entries = getAllEntries();
-        return entries.stream()
-            .collect(Collectors.groupingBy(
-                entry -> entry.getType().name(),
-                Collectors.mapping(
-                    PortfolioEntry::getAmount,                    Collectors.reducing(
-                        BigDecimal.ZERO,
-                        Function.identity(),
-                        BigDecimal::add
-                    )
-                )
-            ));
+    
+    @Transactional(readOnly = true)
+    public List<PortfolioEntry> getEntriesByAccountId(Long accountId) {
+        logger.warn("Fetching entries by account ID: {} across all users. Consider for admin use only.", accountId);
+        return portfolioRepository.findByAccount_IdOrderByDateAddedDesc(accountId);
     }
 }

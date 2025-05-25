@@ -2,7 +2,7 @@ package com.portfolio.tracker.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -12,7 +12,14 @@ import java.time.LocalDateTime;
 public class PortfolioEntry {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;    @ManyToOne(fetch = FetchType.EAGER)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY) // Changed to LAZY for User
+    @JoinColumn(name = "user_id", nullable = true) // Initially nullable for existing data
+    @JsonIgnore // To prevent serialization issues, manage via DTOs if user info needed here
+    private User user;
+
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "account_id", nullable = false)
     private PortfolioAccount account;
 
