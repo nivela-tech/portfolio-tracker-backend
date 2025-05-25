@@ -3,6 +3,7 @@ package com.portfolio.tracker.controller;
 import com.portfolio.tracker.model.PortfolioEntry;
 import com.portfolio.tracker.model.EntryType;
 import com.portfolio.tracker.service.PortfolioService;
+import com.portfolio.tracker.service.ExportService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +30,9 @@ public class PortfolioController {
 
     @Autowired
     private PortfolioService portfolioService;
+
+    @Autowired
+    private ExportService exportService;
 
     @PostMapping
     public ResponseEntity<PortfolioEntry> addEntry(@RequestBody PortfolioEntry entry) {
@@ -231,6 +239,46 @@ public class PortfolioController {
             return ResponseEntity.ok(data);
         } catch (Exception e) {
             logger.error("Error retrieving portfolio by type: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/export/xlsx")
+    public ResponseEntity<byte[]> exportToXlsx(@RequestParam(required = false) Long accountId) {
+        logger.info("Received request to export entries to XLSX" + (accountId != null ? " for account " + accountId : ""));
+        try {
+            List<PortfolioEntry> entries;
+            if (accountId != null) {
+                entries = portfolioService.getEntriesByAccount(accountId);
+            } else {
+                entries = portfolioService.getAllEntries();
+            }
+            ByteArrayInputStream bis = exportService.exportEntriesToXlsx(entries);
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Content-Disposition", "attachment; filename=portfolio_entries.xlsx");
+            return ResponseEntity.ok().headers(headers).contentType(MediaType.APPLICATION_OCTET_STREAM).body(bis.readAllBytes());
+        } catch (IOException e) {
+            logger.error("Error exporting entries to XLSX: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/export/csv")
+    public ResponseEntity<byte[]> exportToCsv(@RequestParam(required = false) Long accountId) {
+        logger.info("Received request to export entries to CSV" + (accountId != null ? " for account " + accountId : ""));
+        try {
+            List<PortfolioEntry> entries;
+            if (accountId != null) {
+                entries = portfolioService.getEntriesByAccount(accountId);
+            } else {
+                entries = portfolioService.getAllEntries();
+            }
+            ByteArrayInputStream bis = exportService.exportEntriesToCsv(entries);
+            HttpHeaders headers = new HttpHeaders();
+            headers.add("Content-Disposition", "attachment; filename=portfolio_entries.csv");
+            return ResponseEntity.ok().headers(headers).contentType(MediaType.TEXT_PLAIN).body(bis.readAllBytes());
+        } catch (IOException e) {
+            logger.error("Error exporting entries to CSV: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

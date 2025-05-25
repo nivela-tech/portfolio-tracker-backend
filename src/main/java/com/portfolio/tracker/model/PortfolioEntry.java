@@ -19,6 +19,14 @@ public class PortfolioEntry {
     @Transient
     private Long accountId;
 
+    public void setAccount(PortfolioAccount account) {
+        this.account = account;
+        if (account != null) {
+            this.accountId = account.getId();
+        } else {
+            this.accountId = null;
+        }
+    }
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private EntryType type = EntryType.STOCK;
@@ -34,6 +42,9 @@ public class PortfolioEntry {
 
     @Column(nullable = false)
     private String country;
+
+    @Column(nullable = true) // Assuming notes can be optional
+    private String notes;
 
     private LocalDateTime dateAdded = LocalDateTime.now();
 

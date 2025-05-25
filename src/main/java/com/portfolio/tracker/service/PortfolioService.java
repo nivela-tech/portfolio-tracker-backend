@@ -56,10 +56,24 @@ public class PortfolioService {
     public PortfolioEntry addEntry(PortfolioEntry entry) {
         logger.info("Adding new portfolio entry for account ID: {}", entry.getAccountId());
         try {
+            // Ensure accountId is set from account object if account is present
+            if (entry.getAccount() != null && entry.getAccountId() == null) {
+                entry.setAccountId(entry.getAccount().getId());
+            } else if (entry.getAccount() == null && entry.getAccountId() != null) {
+                // If accountId is provided but account object is not, fetch and set account
+                PortfolioAccount account = accountService.getAccountById(entry.getAccountId());
+                entry.setAccount(account); // This will also set the transient accountId via custom setter
+            }
+
             validateEntry(entry);
-            // Validate and set the account
-            PortfolioAccount account = accountService.getAccountById(entry.getAccountId());
-            entry.setAccount(account);
+            // Account should be set by now if accountId was valid
+            if (entry.getAccount() == null && entry.getAccountId() != null) {
+                 // This case should ideally be caught by validateEntry if accountId implies a non-existent account
+                 // or handled by ensuring account is fetched and set before validation.
+                 // For robustness, re-fetch if somehow account is null but accountId is not.
+                PortfolioAccount account = accountService.getAccountById(entry.getAccountId());
+                entry.setAccount(account);
+            }
             
             PortfolioEntry savedEntry = portfolioRepository.save(entry);
             logger.info("Successfully added entry with ID: {}", savedEntry.getId());
@@ -70,21 +84,52 @@ public class PortfolioService {
         }
     }
 
-    public PortfolioEntry updateEntry(PortfolioEntry entry) {
-        logger.info("Updating portfolio entry with ID: {}", entry.getId());
+    public PortfolioEntry updateEntry(PortfolioEntry entryFromRequest) {
+        logger.info("Updating portfolio entry with ID: {}", entryFromRequest.getId());
         try {
-            // Verify the entry exists
-            if (!portfolioRepository.existsById(entry.getId())) {
-                logger.warn("Entry not found with ID: {}", entry.getId());
-                throw new EntityNotFoundException("Entry not found with ID: " + entry.getId());
+            PortfolioEntry existingEntry = portfolioRepository.findById(entryFromRequest.getId())
+                .orElseThrow(() -> {
+                    logger.warn("Entry not found with ID: {}", entryFromRequest.getId());
+                    return new EntityNotFoundException("Entry not found with ID: " + entryFromRequest.getId());
+                });
+
+            // Update mutable fields of existingEntry from entryFromRequest
+            if (entryFromRequest.getType() != null) {
+                existingEntry.setType(entryFromRequest.getType());
+            }
+            if (entryFromRequest.getSource() != null) {
+                existingEntry.setSource(entryFromRequest.getSource());
+            }
+            if (entryFromRequest.getAmount() != null) {
+                existingEntry.setAmount(entryFromRequest.getAmount());
+            }
+            if (entryFromRequest.getCurrency() != null) {
+                existingEntry.setCurrency(entryFromRequest.getCurrency());
+            }
+            if (entryFromRequest.getCountry() != null) {
+                existingEntry.setCountry(entryFromRequest.getCountry());
+            }
+            // dateAdded is typically not updated this way.
+
+            // Handle account change if accountId is provided in the request
+            if (entryFromRequest.getAccountId() != null &&
+                (existingEntry.getAccount() == null || !entryFromRequest.getAccountId().equals(existingEntry.getAccount().getId()))) {
+                PortfolioAccount newAccount = accountService.getAccountById(entryFromRequest.getAccountId());
+                existingEntry.setAccount(newAccount); // Custom setter updates transient accountId
             }
 
-            validateEntry(entry);
-            // Validate and set the account
-            PortfolioAccount account = accountService.getAccountById(entry.getAccountId());
-            entry.setAccount(account);
+            // Ensure the transient accountId on existingEntry is synchronized before validation
+            if (existingEntry.getAccount() != null) {
+                existingEntry.setAccountId(existingEntry.getAccount().getId());
+            } else {
+                // This case should ideally not happen if account_id is non-nullable in DB
+                // and an entry always has an account.
+                existingEntry.setAccountId(null);
+            }
             
-            PortfolioEntry updatedEntry = portfolioRepository.save(entry);
+            validateEntry(existingEntry); // Validate the updated existingEntry
+            
+            PortfolioEntry updatedEntry = portfolioRepository.save(existingEntry);
             logger.info("Successfully updated entry with ID: {}", updatedEntry.getId());
             return updatedEntry;
         } catch (Exception e) {
