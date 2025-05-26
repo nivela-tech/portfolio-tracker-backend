@@ -1,2 +1,0 @@
-ALTER TABLE portfolio_entries
-ADD COLUMN type VARCHAR(20) NOT NULL DEFAULT 'STOCK';
