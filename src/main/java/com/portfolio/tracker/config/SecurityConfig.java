@@ -47,10 +47,11 @@ public class SecurityConfig {
                 .logoutSuccessUrl("http://localhost:3000/?logout=true") // Redirect to frontend after logout
                 .invalidateHttpSession(true)
                 .deleteCookies("JSESSIONID")
-            )
-            .csrf(csrf -> csrf
+            )            .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                .ignoringRequestMatchers("/api/user/me") // No CSRF needed for GETting user status
+                // Disable CSRF for API endpoints during development to troubleshoot 403 issues
+                // In production, you should properly handle CSRF tokens instead of disabling protection
+                .ignoringRequestMatchers("/api/**")
             )
             // If you want to return 401 instead of redirecting to login page for API calls from frontend
             .exceptionHandling(e -> e

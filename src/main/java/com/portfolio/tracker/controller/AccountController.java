@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/accounts")
+@RequestMapping({"/api/accounts", "/api/accounts/"})  // Handle both with and without trailing slash
 public class AccountController {
     private static final Logger logger = LoggerFactory.getLogger(AccountController.class);
 
@@ -42,9 +42,7 @@ public class AccountController {
                     logger.error("Authenticated user with email {} not found in database.", email);
                     return new EntityNotFoundException("Authenticated user not found");
                 });
-    }
-
-    @PostMapping
+    }    @PostMapping({"", "/"})  // Handle both with and without trailing slash
     public ResponseEntity<?> createAccount(@RequestBody PortfolioAccount account, @AuthenticationPrincipal OAuth2User oAuth2User) {
         try {
             User user = getAuthenticatedUser(oAuth2User);
@@ -73,14 +71,15 @@ public class AccountController {
             User user = getAuthenticatedUser(oAuth2User);
             logger.info("Received request to get all accounts for user {}", user.getEmail());
             List<PortfolioAccount> accounts = accountService.getAllAccountsByUser(user);
+            if (accounts.isEmpty()) {
+                logger.info("No accounts found for user {}", user.getEmail());
+                return ResponseEntity.ok(accounts); // Return empty list instead of error
+            }
             logger.info("Retrieved {} accounts for user {}", accounts.size(), user.getEmail());
             return ResponseEntity.ok(accounts);
         } catch (SecurityException e) {
             logger.warn("Security exception in getAllAccounts: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
-        } catch (EntityNotFoundException e) {
-            logger.warn("EntityNotFoundException in getAllAccounts: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         } catch (Exception e) {
             logger.error("Error retrieving all accounts for user {}: {}", (oAuth2User != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An internal error occurred.");
@@ -131,9 +130,7 @@ public class AccountController {
             logger.error("Error updating account ID {} for user {}: {}", id, (oAuth2User != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An internal error occurred.");
         }
-    }
-
-    @DeleteMapping("/{id}")
+    }    @DeleteMapping({"/{id}", "/{id}/"}) // Handle both with and without trailing slash
     public ResponseEntity<?> deleteAccount(@PathVariable Long id, @AuthenticationPrincipal OAuth2User oAuth2User) {
         try {
             User user = getAuthenticatedUser(oAuth2User);

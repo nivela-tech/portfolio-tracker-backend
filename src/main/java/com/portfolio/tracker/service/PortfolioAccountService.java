@@ -123,31 +123,26 @@ public class PortfolioAccountService {
             logger.error("Failed to update account with ID {} for user {}: {}", id, user.getEmail(), e.getMessage(), e);
             throw e;
         }
-    }
-
-    public void deleteAccount(Long id, User user) { // Added User parameter
+    }    public void deleteAccount(Long id, User user) { // Added User parameter
         logger.info("Attempting to delete account with ID: {} by user: {}", id, user.getEmail());
         try {
             // Fetch existing account ensuring it belongs to the user
             PortfolioAccount account = getAccountByIdAndUser(id, user); 
             logger.debug("Found account to delete: {} for user: {}", account.getName(), user.getEmail());
             
-            // Add check for associated portfolio entries if cascading delete is not desired or if specific logic is needed
+            // Log info about entries that will be deleted with the account
             if (account.getEntries() != null && !account.getEntries().isEmpty()) {
-                logger.warn("Attempt to delete account ID: {} which has {} associated entries. Deletion aborted. Please delete entries first.", id, account.getEntries().size());
-                // Depending on requirements, you might allow deletion (cascade) or throw an exception.
-                // For now, let's prevent deletion if entries exist.
-                throw new IllegalStateException("Cannot delete account with ID: " + id + " as it has associated portfolio entries. Please delete entries first.");
+                logger.info("Account ID: {} will be deleted along with {} associated entries", 
+                    id, account.getEntries().size());
             }
 
+            // The cascade = CascadeType.ALL in the @OneToMany relationship will handle deleting entries
             accountRepository.delete(account);
-            logger.info("Successfully deleted account with ID: {} and Name: {} for user: {}", id, account.getName(), user.getEmail());
-        } catch (IllegalStateException e) {
-            logger.warn("Deletion aborted for account ID {}: {}", id, e.getMessage());
-            throw e; // Re-throw to inform the controller
-        }
-         catch (Exception e) {
-            logger.error("Failed to delete account with ID {} for user {}: {}", id, user.getEmail(), e.getMessage(), e);
+            logger.info("Successfully deleted account with ID: {} and Name: {} for user: {}", 
+                id, account.getName(), user.getEmail());
+        } catch (Exception e) {
+            logger.error("Failed to delete account with ID {} for user {}: {}", 
+                id, user.getEmail(), e.getMessage(), e);
             throw e;
         }
     }

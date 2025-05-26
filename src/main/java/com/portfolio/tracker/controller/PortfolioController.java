@@ -25,9 +25,9 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/portfolio")
+@RequestMapping({"/api/portfolio", "/api/portfolio/"}) // Handle both with and without trailing slash
 @CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "*", methods = {
-    RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE
+    RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS
 })
 public class PortfolioController {
     private static final Logger logger = LoggerFactory.getLogger(PortfolioController.class);
@@ -48,9 +48,7 @@ public class PortfolioController {
         String providerId = principal.getAttribute("sub"); // Or "name" depending on provider and CustomOAuth2UserService
         return userService.findByProviderId(providerId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with provider ID: " + providerId));
-    }
-
-    @PostMapping
+    }    @PostMapping({"", "/"}) // Handle both with and without trailing slash
     public ResponseEntity<PortfolioEntry> addEntry(@RequestBody PortfolioEntry entry, @AuthenticationPrincipal OAuth2User principal) {
         logger.info("Received request to add new portfolio entry");
         try {
@@ -97,9 +95,7 @@ public class PortfolioController {
             logger.error("Error deleting portfolio entry: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-    }
-
-    @GetMapping
+    }    @GetMapping({"", "/"}) // Handle both with and without trailing slash
     public ResponseEntity<List<PortfolioEntry>> getAllEntries(@RequestParam(required = false) Long accountId, @AuthenticationPrincipal OAuth2User principal) {
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to get all entries for user: {}" + (accountId != null ? " for account " + accountId : ""), currentUser.getEmail());
@@ -116,9 +112,7 @@ public class PortfolioController {
             logger.error("Error retrieving portfolio entries for user {}: {}", currentUser.getEmail(), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-    }
-
-    @GetMapping("/combined")
+    }    @GetMapping({"/combined", "/combined/"}) // Handle both with and without trailing slash
     public ResponseEntity<List<PortfolioEntry>> getCombinedPortfolio(@AuthenticationPrincipal OAuth2User principal) {
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to get combined portfolio for user: {}", currentUser.getEmail());
