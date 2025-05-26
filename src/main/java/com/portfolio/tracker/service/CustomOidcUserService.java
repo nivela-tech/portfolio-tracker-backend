@@ -3,29 +3,27 @@ package com.portfolio.tracker.service;
 import com.portfolio.tracker.model.User;
 import com.portfolio.tracker.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
-import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
-public class CustomOidcUserService implements OAuth2UserService<OAuth2UserRequest, OidcUser> {
+public class CustomOidcUserService extends OidcUserService {
 
     @Autowired
     private UserRepository userRepository;
 
     @Override
-    public OidcUser loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-        OidcUser oidcUser = new DefaultOidcUser(userRequest.getAccessToken().getScopes(),
-                userRequest.getIdToken());
+    public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
+        OidcUser oidcUser = super.loadUser(userRequest);
 
         // Extract user details from OidcUser
-        String providerId = oidcUser.getSubject(); // 'sub' claim for Google
+        String providerId = oidcUser.getSubject(); // Use getSubject() for 'sub' claim
         String email = oidcUser.getEmail();
         String name = oidcUser.getFullName();
         String imageUrl = oidcUser.getPicture();

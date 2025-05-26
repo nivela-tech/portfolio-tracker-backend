@@ -174,6 +174,20 @@ public class PortfolioController {
         }
     }
 
+    @GetMapping("/combined/by-type")
+    public ResponseEntity<Map<String, BigDecimal>> getCombinedPortfolioByType(@AuthenticationPrincipal OAuth2User principal) {
+        User currentUser = getCurrentUser(principal);
+        logger.info("Received request to get portfolio grouped by type for user: {}", currentUser.getEmail());
+        try {
+            Map<String, BigDecimal> data = portfolioService.getCombinedPortfolioByTypeUser(currentUser);
+            logger.info("Successfully retrieved portfolio data for {} types for user: {}", data.size(), currentUser.getEmail());
+            return ResponseEntity.ok(data);
+        } catch (Exception e) {
+            logger.error("Error retrieving portfolio by type for user {}: {}", currentUser.getEmail(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping("/currency/{currency}")
     public ResponseEntity<List<PortfolioEntry>> getEntriesByCurrency(
             @PathVariable String currency,
@@ -254,20 +268,6 @@ public class PortfolioController {
             return ResponseEntity.ok(entries);
         } catch (Exception e) {
             logger.error("Error retrieving entries by type for user {}: {}", currentUser.getEmail(), e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping("/combined/by-type")
-    public ResponseEntity<Map<String, BigDecimal>> getCombinedPortfolioByType(@AuthenticationPrincipal OAuth2User principal) {
-        User currentUser = getCurrentUser(principal);
-        logger.info("Received request to get portfolio grouped by type for user: {}", currentUser.getEmail());
-        try {
-            Map<String, BigDecimal> data = portfolioService.getCombinedPortfolioByTypeUser(currentUser);
-            logger.info("Successfully retrieved portfolio data for {} types for user: {}", data.size(), currentUser.getEmail());
-            return ResponseEntity.ok(data);
-        } catch (Exception e) {
-            logger.error("Error retrieving portfolio by type for user {}: {}", currentUser.getEmail(), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

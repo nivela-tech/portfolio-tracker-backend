@@ -34,12 +34,16 @@ public class PortfolioAccountController {
             logger.warn("OAuth2User is null, cannot identify current user.");
             throw new IllegalStateException("User not authenticated");
         }
-        User user = userService.getUserByEmail(oAuth2User.getAttribute("email"));
-        if (user == null) {
-            // This case should ideally be handled by CustomOAuth2UserService creating the user
-            logger.error("User not found in database for email: {}", oAuth2User.getAttribute("email"));
-            throw new EntityNotFoundException("User not found for email: " + oAuth2User.getAttribute("email"));
+        String email = oAuth2User.getAttribute("email");
+        if (email == null) {
+            logger.warn("Email attribute not found in OAuth2User principal for user: {}", oAuth2User.getName());
+            throw new IllegalStateException("User email not found in authentication token");
         }
+        User user = userService.findByEmail(email)
+            .orElseThrow(() -> {
+                logger.error("User not found in database for email: {}", email);
+                return new EntityNotFoundException("User not found for email: " + email);
+            });
         return user;
     }
 
@@ -51,10 +55,10 @@ public class PortfolioAccountController {
             PortfolioAccount createdAccount = portfolioAccountService.createAccount(account, currentUser);
             return new ResponseEntity<>(createdAccount, HttpStatus.CREATED);
         } catch (IllegalArgumentException e) {
-            logger.warn("Invalid argument for creating account by user {}: {}", (oAuth2User != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage());
+            logger.warn("Invalid argument for creating account by user {}: {}", (oAuth2User != null && oAuth2User.getAttribute("email") != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            logger.error("Error creating account for user {}: {}", (oAuth2User != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage(), e);
+            logger.error("Error creating account for user {}: {}", (oAuth2User != null && oAuth2User.getAttribute("email") != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error creating account: " + e.getMessage());
         }
     }
@@ -67,7 +71,7 @@ public class PortfolioAccountController {
             List<PortfolioAccount> accounts = portfolioAccountService.getAllAccountsByUser(currentUser);
             return ResponseEntity.ok(accounts);
         } catch (Exception e) {
-            logger.error("Error fetching accounts for user {}: {}", (oAuth2User != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage(), e);
+            logger.error("Error fetching accounts for user {}: {}", (oAuth2User != null && oAuth2User.getAttribute("email") != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error fetching accounts: " + e.getMessage());
         }
     }
@@ -80,10 +84,10 @@ public class PortfolioAccountController {
             PortfolioAccount account = portfolioAccountService.getAccountByIdAndUser(id, currentUser);
             return ResponseEntity.ok(account);
         } catch (EntityNotFoundException e) {
-            logger.warn("Account not found with ID {} for user {}: {}", id, (oAuth2User != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage());
+            logger.warn("Account not found with ID {} for user {}: {}", id, (oAuth2User != null && oAuth2User.getAttribute("email") != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         } catch (Exception e) {
-            logger.error("Error fetching account ID {} for user {}: {}", id, (oAuth2User != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage(), e);
+            logger.error("Error fetching account ID {} for user {}: {}", id, (oAuth2User != null && oAuth2User.getAttribute("email") != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error fetching account: " + e.getMessage());
         }
     }
@@ -96,13 +100,13 @@ public class PortfolioAccountController {
             PortfolioAccount updatedAccount = portfolioAccountService.updateAccount(id, accountDetails, currentUser);
             return ResponseEntity.ok(updatedAccount);
         } catch (EntityNotFoundException e) {
-            logger.warn("Account not found for update with ID {} for user {}: {}", id, (oAuth2User != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage());
+            logger.warn("Account not found for update with ID {} for user {}: {}", id, (oAuth2User != null && oAuth2User.getAttribute("email") != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         } catch (IllegalArgumentException e) {
-            logger.warn("Invalid argument for updating account ID {} by user {}: {}", id, (oAuth2User != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage());
+            logger.warn("Invalid argument for updating account ID {} by user {}: {}", id, (oAuth2User != null && oAuth2User.getAttribute("email") != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            logger.error("Error updating account ID {} for user {}: {}", id, (oAuth2User != null ? oAuth2_user.getAttribute("email") : "unknown"), e.getMessage(), e);
+            logger.error("Error updating account ID {} for user {}: {}", id, (oAuth2User != null && oAuth2User.getAttribute("email") != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error updating account: " + e.getMessage());
         }
     }
@@ -115,14 +119,14 @@ public class PortfolioAccountController {
             portfolioAccountService.deleteAccount(id, currentUser);
             return ResponseEntity.noContent().build();
         } catch (EntityNotFoundException e) {
-            logger.warn("Account not found for deletion with ID {} for user {}: {}", id, (oAuth2User != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage());
+            logger.warn("Account not found for deletion with ID {} for user {}: {}", id, (oAuth2User != null && oAuth2User.getAttribute("email") != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         } catch (IllegalStateException e) { // Catch specific exception for deletion conflicts (e.g., account has entries)
-            logger.warn("Deletion conflict for account ID {} by user {}: {}", id, (oAuth2User != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage());
+            logger.warn("Deletion conflict for account ID {} by user {}: {}", id, (oAuth2User != null && oAuth2User.getAttribute("email") != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
         catch (Exception e) {
-            logger.error("Error deleting account ID {} for user {}: {}", id, (oAuth2User != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage(), e);
+            logger.error("Error deleting account ID {} for user {}: {}", id, (oAuth2User != null && oAuth2User.getAttribute("email") != null ? oAuth2User.getAttribute("email") : "unknown"), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error deleting account: " + e.getMessage());
         }
     }

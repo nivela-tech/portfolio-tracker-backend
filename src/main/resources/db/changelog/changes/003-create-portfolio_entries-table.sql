@@ -1,10 +1,5 @@
-CREATE TABLE IF NOT EXISTS portfolio_accounts (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    relationship VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS portfolio_entries (
+-- changeset ami:1-create-portfolio_entries
+CREATE TABLE portfolio_entries (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     account_id BIGINT NOT NULL,
     type VARCHAR(20) NOT NULL DEFAULT 'STOCK',
@@ -13,5 +8,6 @@ CREATE TABLE IF NOT EXISTS portfolio_entries (
     currency VARCHAR(3) NOT NULL,
     country VARCHAR(255) NOT NULL,
     date_added TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (account_id) REFERENCES portfolio_accounts(id)
+    notes VARCHAR(255),
+    user_id BIGINT
 );

@@ -24,7 +24,7 @@ public class CustomOAuth2UserService extends OidcUserService { // Changed from D
         OidcUser oidcUser = super.loadUser(userRequest); // super.loadUser will now return OidcUser
 
         // Extract user details from OidcUser
-        String providerId = oidcUser.getName(); // This is usually the 'sub' claim for Google
+        String providerId = oidcUser.getSubject(); // Use getSubject() for 'sub'
         String email = oidcUser.getEmail();
         String name = oidcUser.getFullName();
         String imageUrl = oidcUser.getPicture();

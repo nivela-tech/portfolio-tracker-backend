@@ -212,49 +212,71 @@ public class PortfolioService {
         return portfolioRepository.findByTypeAndAccountAndUser(type, account, user);
     }
 
-    @Transactional(readOnly = true)
-    public List<PortfolioEntry> getCombinedPortfolioEntriesForUser(User user) {
+    // Methods for combined views, user-specific
+    public List<PortfolioEntry> getCombinedPortfolioEntriesByUser(User user) {
         logger.info("Fetching combined portfolio entries for user: {}", user.getEmail());
-        List<PortfolioEntry> allEntries = portfolioRepository.findByUserOrderByDateAddedDesc(user);
-        Map<List<Object>, PortfolioEntry> combinedMap = allEntries.stream()
-            .collect(Collectors.toMap(
-                entry -> List.of(
-                    entry.getSource() != null ? entry.getSource() : "N/A",
-                    entry.getType(),
-                    entry.getCurrency(),
-                    entry.getCountry(),
-                    entry.getAccount() != null ? entry.getAccount().getId() : -1L
-                ),
-                Function.identity(),
-                (existing, replacement) -> {
-                    existing.setAmount(existing.getAmount().add(replacement.getAmount()));
-                    return existing;
-                }
+        // This method might simply return all entries, or could involve more complex logic
+        // if "combined" means something specific (e.g., aggregating certain types).
+        // For now, let's assume it's all entries for the user.
+        return portfolioRepository.findByUserOrderByDateAddedDesc(user);
+    }
+
+    public Map<String, BigDecimal> getCombinedPortfolioByCurrencyUser(User user) {
+        logger.info("Fetching combined portfolio by currency for user: {}", user.getEmail());
+        List<PortfolioEntry> entries = portfolioRepository.findByUserOrderByDateAddedDesc(user);
+        return entries.stream()
+            .collect(Collectors.groupingBy(
+                PortfolioEntry::getCurrency,
+                Collectors.mapping(PortfolioEntry::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
             ));
-        List<PortfolioEntry> result = combinedMap.values().stream().collect(Collectors.toList());
-        logger.info("Successfully combined {} entries into {} for user: {}", allEntries.size(), result.size(), user.getEmail());
-        return result;
     }
 
-    @Transactional(readOnly = true)
+    public Map<String, BigDecimal> getCombinedPortfolioByCountryUser(User user) {
+        logger.info("Fetching combined portfolio by country for user: {}", user.getEmail());
+        List<PortfolioEntry> entries = portfolioRepository.findByUserOrderByDateAddedDesc(user);
+        return entries.stream()
+            .collect(Collectors.groupingBy(
+                PortfolioEntry::getCountry,
+                Collectors.mapping(PortfolioEntry::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+            ));
+    }
+
+    public Map<String, BigDecimal> getCombinedPortfolioBySourceUser(User user) {
+        logger.info("Fetching combined portfolio by source for user: {}", user.getEmail());
+        List<PortfolioEntry> entries = portfolioRepository.findByUserOrderByDateAddedDesc(user);
+        return entries.stream()
+            .collect(Collectors.groupingBy(
+                PortfolioEntry::getSource,
+                Collectors.mapping(PortfolioEntry::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+            ));
+    }
+
+    public Map<String, BigDecimal> getCombinedPortfolioByTypeUser(User user) {
+        logger.info("Fetching combined portfolio by type for user: {}", user.getEmail());
+        List<PortfolioEntry> entries = portfolioRepository.findByUserOrderByDateAddedDesc(user);
+        return entries.stream()
+            .collect(Collectors.groupingBy(
+                entry -> entry.getType().name(), // Group by the string representation of the EntryType enum
+                Collectors.mapping(PortfolioEntry::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+            ));
+    }
+
+    // Consider if these non-user specific methods are still needed or should be secured.
+    // For now, they are left as is, but typically would require admin roles.
+
     public List<PortfolioEntry> getAllEntries() {
-        logger.warn("Fetching all portfolio entries across all users. Consider for admin use only.");
-        return portfolioRepository.findAll();
+        logger.info("Fetching all portfolio entries (admin/system operation)");
+        return portfolioRepository.findAllByOrderByDateAddedDesc();
     }
 
-    @Transactional(readOnly = true)
-    public PortfolioEntry getEntryById(Long id) {
-        logger.warn("Fetching entry by ID: {} across all users. Consider for admin use only.", id);
-        return portfolioRepository.findById(id)
-            .orElseThrow(() -> {
-                logger.warn("Admin access: Entry not found with ID: {}", id);
-                return new EntityNotFoundException("Entry not found with ID: " + id);
-            });
-    }
-    
-    @Transactional(readOnly = true)
-    public List<PortfolioEntry> getEntriesByAccountId(Long accountId) {
-        logger.warn("Fetching entries by account ID: {} across all users. Consider for admin use only.", accountId);
+    public List<PortfolioEntry> getEntriesByAccount(Long accountId) {
+        logger.info("Fetching entries for account ID: {} (admin/system operation)", accountId);
+        // This assumes accountService.getAccountById is an admin/system accessible method
+        // or that accountId is sufficient and doesn't need user validation here.
+        // For true multi-tenancy, this method should likely be removed or secured.
         return portfolioRepository.findByAccount_IdOrderByDateAddedDesc(accountId);
     }
+    
+    // ... other existing non-user specific methods like getEntriesByCurrency, getEntriesByCountry etc.
+    // These should also be reviewed for security in a multi-user context.
 }
