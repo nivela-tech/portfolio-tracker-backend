@@ -117,6 +117,10 @@ esac
 CLASSPATH="\\\"\\\""
 
 
+# Override JAVA_HOME for project requirements (Java 21)
+# Comment out the next line if you want to use your system's JAVA_HOME
+JAVA_HOME="/usr/lib/jvm/java-21-openjdk"  # Adjust this path for your Linux/macOS Java 21 installation
+
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then
     if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
