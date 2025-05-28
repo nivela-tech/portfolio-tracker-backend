@@ -1,12 +1,12 @@
 package com.portfolio.tracker.dto;
 
 public class UserDto {
-    private Long id;
+    private String id;
     private String name;
     private String email;
     private String provider;
 
-    public UserDto(Long id, String name, String email, String provider) {
+    public UserDto(String id, String name, String email, String provider) {
         this.id = id;
         this.name = name;
         this.email = email;
@@ -14,11 +14,11 @@ public class UserDto {
     }
 
     // Getters and Setters
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 

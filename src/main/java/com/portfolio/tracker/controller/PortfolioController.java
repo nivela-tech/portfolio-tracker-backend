@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID; // Added import
 
 @RestController
 @RequestMapping({"/api/portfolio", "/api/portfolio/"}) // Handle both with and without trailing slash
@@ -63,7 +64,7 @@ public class PortfolioController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<PortfolioEntry> updateEntry(@PathVariable Long id, @RequestBody PortfolioEntry entry, @AuthenticationPrincipal OAuth2User principal) {
+    public ResponseEntity<PortfolioEntry> updateEntry(@PathVariable UUID id, @RequestBody PortfolioEntry entry, @AuthenticationPrincipal OAuth2User principal) { // Changed Long to UUID
         logger.info("Received request to update portfolio entry with ID: {}", id);
         try {
             User currentUser = getCurrentUser(principal);
@@ -81,7 +82,7 @@ public class PortfolioController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEntry(@PathVariable Long id, @AuthenticationPrincipal OAuth2User principal) {
+    public ResponseEntity<Void> deleteEntry(@PathVariable UUID id, @AuthenticationPrincipal OAuth2User principal) { // Changed Long to UUID
         logger.info("Received request to delete portfolio entry with ID: {}", id);
         try {
             User currentUser = getCurrentUser(principal);
@@ -96,13 +97,13 @@ public class PortfolioController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }    @GetMapping({"", "/"}) // Handle both with and without trailing slash
-    public ResponseEntity<List<PortfolioEntry>> getAllEntries(@RequestParam(required = false) Long accountId, @AuthenticationPrincipal OAuth2User principal) {
+    public ResponseEntity<List<PortfolioEntry>> getAllEntries(@RequestParam(required = false) UUID accountId, @AuthenticationPrincipal OAuth2User principal) { // Changed Long to UUID
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to get all entries for user: {}" + (accountId != null ? " for account " + accountId : ""), currentUser.getEmail());
         try {
             List<PortfolioEntry> entries;
             if (accountId != null) {
-                entries = portfolioService.getEntriesByAccountAndUser(accountId, currentUser);
+                entries = portfolioService.getEntriesByAccountIdAndUser(accountId, currentUser);
             } else {
                 entries = portfolioService.getAllEntriesByUser(currentUser);
             }
@@ -117,7 +118,7 @@ public class PortfolioController {
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to get combined portfolio for user: {}", currentUser.getEmail());
         try {
-            List<PortfolioEntry> entries = portfolioService.getCombinedPortfolioEntriesByUser(currentUser);
+            List<PortfolioEntry> entries = portfolioService.getCombinedEntriesByUser(currentUser);
             logger.info("Successfully retrieved combined portfolio with {} entries for user: {}", entries.size(), currentUser.getEmail());
             return ResponseEntity.ok(entries);
         } catch (Exception e) {
@@ -131,7 +132,7 @@ public class PortfolioController {
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to get portfolio grouped by currency for user: {}", currentUser.getEmail());
         try {
-            Map<String, BigDecimal> data = portfolioService.getCombinedPortfolioByCurrencyUser(currentUser);
+            Map<String, BigDecimal> data = portfolioService.getCombinedEntriesByCurrencyAndUser(currentUser);
             logger.info("Successfully retrieved portfolio data for {} currencies for user: {}", data.size(), currentUser.getEmail());
             return ResponseEntity.ok(data);
         } catch (Exception e) {
@@ -145,7 +146,7 @@ public class PortfolioController {
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to get portfolio grouped by country for user: {}", currentUser.getEmail());
         try {
-            Map<String, BigDecimal> data = portfolioService.getCombinedPortfolioByCountryUser(currentUser);
+            Map<String, BigDecimal> data = portfolioService.getCombinedEntriesByCountryAndUser(currentUser);
             logger.info("Successfully retrieved portfolio data for {} countries for user: {}", data.size(), currentUser.getEmail());
             return ResponseEntity.ok(data);
         } catch (Exception e) {
@@ -159,7 +160,7 @@ public class PortfolioController {
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to get portfolio grouped by source for user: {}", currentUser.getEmail());
         try {
-            Map<String, BigDecimal> data = portfolioService.getCombinedPortfolioBySourceUser(currentUser);
+            Map<String, BigDecimal> data = portfolioService.getCombinedEntriesBySourceAndUser(currentUser);
             logger.info("Successfully retrieved portfolio data for {} sources for user: {}", data.size(), currentUser.getEmail());
             return ResponseEntity.ok(data);
         } catch (Exception e) {
@@ -173,7 +174,7 @@ public class PortfolioController {
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to get portfolio grouped by type for user: {}", currentUser.getEmail());
         try {
-            Map<String, BigDecimal> data = portfolioService.getCombinedPortfolioByTypeUser(currentUser);
+            Map<String, BigDecimal> data = portfolioService.getCombinedEntriesByTypeAndUser(currentUser);
             logger.info("Successfully retrieved portfolio data for {} types for user: {}", data.size(), currentUser.getEmail());
             return ResponseEntity.ok(data);
         } catch (Exception e) {
@@ -185,13 +186,13 @@ public class PortfolioController {
     @GetMapping("/currency/{currency}")
     public ResponseEntity<List<PortfolioEntry>> getEntriesByCurrency(
             @PathVariable String currency,
-            @RequestParam(required = false) Long accountId, @AuthenticationPrincipal OAuth2User principal) {
+            @RequestParam(required = false) UUID accountId, @AuthenticationPrincipal OAuth2User principal) { // Changed Long to UUID
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to get entries by currency: {} for user: {}", currency, currentUser.getEmail());
         try {
             List<PortfolioEntry> entries;
             if (accountId != null) {
-                entries = portfolioService.getEntriesByCurrencyAndAccountAndUser(currency, accountId, currentUser);
+                entries = portfolioService.getEntriesByCurrencyAndAccountIdAndUser(currency, accountId, currentUser);
             } else {
                 entries = portfolioService.getEntriesByCurrencyAndUser(currency, currentUser);
             }
@@ -206,13 +207,13 @@ public class PortfolioController {
     @GetMapping("/country/{country}")
     public ResponseEntity<List<PortfolioEntry>> getEntriesByCountry(
             @PathVariable String country,
-            @RequestParam(required = false) Long accountId, @AuthenticationPrincipal OAuth2User principal) {
+            @RequestParam(required = false) UUID accountId, @AuthenticationPrincipal OAuth2User principal) { // Changed Long to UUID
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to get entries by country: {} for user: {}", country, currentUser.getEmail());
         try {
             List<PortfolioEntry> entries;
             if (accountId != null) {
-                entries = portfolioService.getEntriesByCountryAndAccountAndUser(country, accountId, currentUser);
+                entries = portfolioService.getEntriesByCountryAndAccountIdAndUser(country, accountId, currentUser);
             } else {
                 entries = portfolioService.getEntriesByCountryAndUser(country, currentUser);
             }
@@ -227,13 +228,13 @@ public class PortfolioController {
     @GetMapping("/source/{source}")
     public ResponseEntity<List<PortfolioEntry>> getEntriesBySource(
             @PathVariable String source,
-            @RequestParam(required = false) Long accountId, @AuthenticationPrincipal OAuth2User principal) {
+            @RequestParam(required = false) UUID accountId, @AuthenticationPrincipal OAuth2User principal) { // Changed Long to UUID
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to get entries by source: {} for user: {}", source, currentUser.getEmail());
         try {
             List<PortfolioEntry> entries;
             if (accountId != null) {
-                entries = portfolioService.getEntriesBySourceAndAccountAndUser(source, accountId, currentUser);
+                entries = portfolioService.getEntriesBySourceAndAccountIdAndUser(source, accountId, currentUser);
             } else {
                 entries = portfolioService.getEntriesBySourceAndUser(source, currentUser);
             }
@@ -248,13 +249,13 @@ public class PortfolioController {
     @GetMapping("/type/{type}")
     public ResponseEntity<List<PortfolioEntry>> getEntriesByType(
             @PathVariable EntryType type,
-            @RequestParam(required = false) Long accountId, @AuthenticationPrincipal OAuth2User principal) {
+            @RequestParam(required = false) UUID accountId, @AuthenticationPrincipal OAuth2User principal) { // Changed Long to UUID
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to get entries by type: {} for user: {}", type, currentUser.getEmail());
         try {
             List<PortfolioEntry> entries;
             if (accountId != null) {
-                entries = portfolioService.getEntriesByTypeAndAccountAndUser(type, accountId, currentUser);
+                entries = portfolioService.getEntriesByTypeAndAccountIdAndUser(type, accountId, currentUser);
             } else {
                 entries = portfolioService.getEntriesByTypeAndUser(type, currentUser);
             }
@@ -267,13 +268,13 @@ public class PortfolioController {
     }
 
     @GetMapping("/export/xlsx")
-    public ResponseEntity<byte[]> exportToXlsx(@RequestParam(required = false) Long accountId, @AuthenticationPrincipal OAuth2User principal) {
+    public ResponseEntity<byte[]> exportToXlsx(@RequestParam(required = false) UUID accountId, @AuthenticationPrincipal OAuth2User principal) { // Changed Long to UUID
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to export entries to XLSX for user: {}" + (accountId != null ? " for account " + accountId : ""), currentUser.getEmail());
         try {
             List<PortfolioEntry> entries;
             if (accountId != null) {
-                entries = portfolioService.getEntriesByAccountAndUser(accountId, currentUser);
+                entries = portfolioService.getEntriesByAccountIdAndUser(accountId, currentUser);
             } else {
                 entries = portfolioService.getAllEntriesByUser(currentUser);
             }
@@ -288,13 +289,13 @@ public class PortfolioController {
     }
 
     @GetMapping("/export/csv")
-    public ResponseEntity<byte[]> exportToCsv(@RequestParam(required = false) Long accountId, @AuthenticationPrincipal OAuth2User principal) {
+    public ResponseEntity<byte[]> exportToCsv(@RequestParam(required = false) UUID accountId, @AuthenticationPrincipal OAuth2User principal) { // Changed Long to UUID
         User currentUser = getCurrentUser(principal);
         logger.info("Received request to export entries to CSV for user: {}" + (accountId != null ? " for account " + accountId : ""), currentUser.getEmail());
         try {
             List<PortfolioEntry> entries;
             if (accountId != null) {
-                entries = portfolioService.getEntriesByAccountAndUser(accountId, currentUser);
+                entries = portfolioService.getEntriesByAccountIdAndUser(accountId, currentUser);
             } else {
                 entries = portfolioService.getAllEntriesByUser(currentUser);
             }

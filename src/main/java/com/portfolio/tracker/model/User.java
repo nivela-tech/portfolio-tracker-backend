@@ -2,14 +2,15 @@ package com.portfolio.tracker.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "app_user") // "user" is often a reserved keyword in SQL
 public class User {
-
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.AUTO) // JPA will choose the best strategy, often UUIDGenerator for UUID type
+    @Column(columnDefinition = "UUID")
+    private UUID id;
 
     @Column(nullable = false, unique = true)
     private String email;
@@ -17,12 +18,12 @@ public class User {
     @Column(nullable = false)
     private String name;
 
-    @Column(name = "provider_id", unique = true)
+    @Column(unique = true)
     private String providerId; // Google's unique ID for the user
 
     private String imageUrl;
 
-    @Column(nullable = false)
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime lastLogin;
@@ -39,11 +40,11 @@ public class User {
     }
 
     // Getters and Setters
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -93,5 +94,12 @@ public class User {
 
     public void setLastLogin(LocalDateTime lastLogin) {
         this.lastLogin = lastLogin;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 }

@@ -1,7 +1,7 @@
 package com.portfolio.tracker.service;
 
 import com.portfolio.tracker.model.PortfolioAccount;
-import com.portfolio.tracker.model.User; // Added
+import com.portfolio.tracker.model.User;
 import com.portfolio.tracker.repository.PortfolioAccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -10,6 +10,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.hibernate.Hibernate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID; // Added for UUID
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +73,7 @@ public class PortfolioAccountService {
     }
 
     @Transactional(readOnly = true)
-    public PortfolioAccount getAccountByIdAndUser(Long id, User user) { // Renamed and added User parameter
+    public PortfolioAccount getAccountByIdAndUser(UUID id, User user) { // Changed Long to UUID
         logger.info("Fetching account with ID: {} for user: {}", id, user.getEmail());
         if (id == null) {
             logger.warn("Null ID provided for account lookup by user: {}", user.getEmail());
@@ -83,7 +84,7 @@ public class PortfolioAccountService {
             Optional<PortfolioAccount> accountOpt = accountRepository.findByIdAndUser(id, user);
             if (accountOpt.isPresent()) {
                 PortfolioAccount account = accountOpt.get();
-                Hibernate.initialize(account.getEntries()); // Keep if entries are needed immediately
+                Hibernate.initialize(account.getEntries());
                 logger.info("Successfully retrieved and initialized account - ID: {}, Name: {}, User: {}, Entries: {}", 
                     account.getId(), account.getName(), user.getEmail(), account.getEntries().size());
                 return account;
@@ -97,46 +98,42 @@ public class PortfolioAccountService {
         }
     }
 
-    public PortfolioAccount updateAccount(Long id, PortfolioAccount accountDetails, User user) { // Added User parameter
+    public PortfolioAccount updateAccount(UUID id, PortfolioAccount accountDetails, User user) { // Changed Long to UUID
         logger.info("Attempting to update account with ID: {} for user: {}", id, user.getEmail());
         try {
-            // Fetch existing account ensuring it belongs to the user
             PortfolioAccount existingAccount = getAccountByIdAndUser(id, user); 
             logger.debug("Found existing account: {} for user: {}", existingAccount.getName(), user.getEmail());
             
-            // Validate incoming details (user in accountDetails will be ignored, existingAccount's user is authoritative)
             PortfolioAccount tempValidationAccount = new PortfolioAccount();
             tempValidationAccount.setName(accountDetails.getName());
             tempValidationAccount.setRelationship(accountDetails.getRelationship());
-            tempValidationAccount.setUser(user); // Set user for validation purposes
+            tempValidationAccount.setUser(user); 
             validateAccount(tempValidationAccount);
 
             existingAccount.setName(accountDetails.getName());
             existingAccount.setRelationship(accountDetails.getRelationship());
-            // existingAccount.setUser(user); // User is already set and verified by getAccountByIdAndUser
 
             PortfolioAccount updatedAccount = accountRepository.save(existingAccount);
-            Hibernate.initialize(updatedAccount.getEntries()); // Keep if entries are needed immediately
+            Hibernate.initialize(updatedAccount.getEntries()); 
             logger.info("Successfully updated account - ID: {}, Name: {} for user: {}", id, updatedAccount.getName(), user.getEmail());
             return updatedAccount;
         } catch (Exception e) {
             logger.error("Failed to update account with ID {} for user {}: {}", id, user.getEmail(), e.getMessage(), e);
             throw e;
         }
-    }    public void deleteAccount(Long id, User user) { // Added User parameter
+    }
+    
+    public void deleteAccount(UUID id, User user) { // Changed Long to UUID
         logger.info("Attempting to delete account with ID: {} by user: {}", id, user.getEmail());
         try {
-            // Fetch existing account ensuring it belongs to the user
             PortfolioAccount account = getAccountByIdAndUser(id, user); 
             logger.debug("Found account to delete: {} for user: {}", account.getName(), user.getEmail());
             
-            // Log info about entries that will be deleted with the account
             if (account.getEntries() != null && !account.getEntries().isEmpty()) {
                 logger.info("Account ID: {} will be deleted along with {} associated entries", 
                     id, account.getEntries().size());
             }
 
-            // The cascade = CascadeType.ALL in the @OneToMany relationship will handle deleting entries
             accountRepository.delete(account);
             logger.info("Successfully deleted account with ID: {} and Name: {} for user: {}", 
                 id, account.getName(), user.getEmail());
@@ -144,32 +141,6 @@ public class PortfolioAccountService {
             logger.error("Failed to delete account with ID {} for user {}: {}", 
                 id, user.getEmail(), e.getMessage(), e);
             throw e;
-        }
-    }
-
-    // --- Methods that might be admin-only or need re-evaluation (kept from original for now) ---
-    // These methods currently fetch data across all users if called directly without user context.
-    // They should ideally be removed or secured if not intended for general user access.
-
-    @Transactional(readOnly = true)
-    public List<PortfolioAccount> getAllAccounts() {
-        logger.warn("Fetching all accounts across all users. Consider for admin use only.");
-        List<PortfolioAccount> accounts = accountRepository.findAll();
-        accounts.forEach(account -> Hibernate.initialize(account.getEntries()));
-        return accounts;
-    }
-
-    @Transactional(readOnly = true)
-    public PortfolioAccount getAccountById(Long id) {
-        logger.warn("Fetching account by ID: {} across all users. Consider for admin use only.", id);
-         if (id == null) throw new IllegalArgumentException("Account ID cannot be null");
-        Optional<PortfolioAccount> accountOpt = accountRepository.findById(id);
-        if (accountOpt.isPresent()) {
-            PortfolioAccount account = accountOpt.get();
-            Hibernate.initialize(account.getEntries());
-            return account;
-        } else {
-            throw new EntityNotFoundException("Account not found with ID: " + id);
         }
     }
 }

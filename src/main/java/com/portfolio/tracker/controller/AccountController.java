@@ -15,6 +15,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID; // Added import
 
 @RestController
 @RequestMapping({"/api/accounts", "/api/accounts/"})  // Handle both with and without trailing slash
@@ -46,7 +47,7 @@ public class AccountController {
     public ResponseEntity<?> createAccount(@RequestBody PortfolioAccount account, @AuthenticationPrincipal OAuth2User oAuth2User) {
         try {
             User user = getAuthenticatedUser(oAuth2User);
-            logger.info("Received request to create account: {} for user {}", account.getName(), user.getEmail());
+            logger.info("Received request to create account: {} for user {}", account.getName(), user.getEmail()); // Corrected: account.getAccountName() to account.getName()
             PortfolioAccount createdAccount = accountService.createAccount(account, user);
             logger.info("Successfully created account with ID: {} for user {}", createdAccount.getId(), user.getEmail());
             return ResponseEntity.ok(createdAccount);
@@ -87,12 +88,12 @@ public class AccountController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getAccountById(@PathVariable Long id, @AuthenticationPrincipal OAuth2User oAuth2User) {
+    public ResponseEntity<?> getAccountById(@PathVariable UUID id, @AuthenticationPrincipal OAuth2User oAuth2User) { // Changed Long to UUID
         try {
             User user = getAuthenticatedUser(oAuth2User);
             logger.info("Received request to get account with ID: {} for user {}", id, user.getEmail());
             PortfolioAccount account = accountService.getAccountByIdAndUser(id, user);
-            logger.info("Successfully retrieved account: {} for user {}", account.getName(), user.getEmail());
+            logger.info("Successfully retrieved account: {} for user {}", account.getName(), user.getEmail()); // Corrected: account.getAccountName() to account.getName()
             return ResponseEntity.ok(account);
         } catch (SecurityException e) {
             logger.warn("Security exception in getAccountById (ID: {}): {}", id, e.getMessage());
@@ -110,7 +111,7 @@ public class AccountController {
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateAccount(@PathVariable Long id, @RequestBody PortfolioAccount accountDetails, @AuthenticationPrincipal OAuth2User oAuth2User) {
+    public ResponseEntity<?> updateAccount(@PathVariable UUID id, @RequestBody PortfolioAccount accountDetails, @AuthenticationPrincipal OAuth2User oAuth2User) { // Changed Long to UUID
         try {
             User user = getAuthenticatedUser(oAuth2User);
             logger.info("Received request to update account ID {} for user {}", id, user.getEmail());
@@ -131,7 +132,7 @@ public class AccountController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An internal error occurred.");
         }
     }    @DeleteMapping({"/{id}", "/{id}/"}) // Handle both with and without trailing slash
-    public ResponseEntity<?> deleteAccount(@PathVariable Long id, @AuthenticationPrincipal OAuth2User oAuth2User) {
+    public ResponseEntity<?> deleteAccount(@PathVariable UUID id, @AuthenticationPrincipal OAuth2User oAuth2User) { // Changed Long to UUID
         try {
             User user = getAuthenticatedUser(oAuth2User);
             logger.info("Received request to delete account ID {} by user {}", id, user.getEmail());

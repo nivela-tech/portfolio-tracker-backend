@@ -46,7 +46,7 @@ public class UserController {
                     return new EntityNotFoundException("User details not found in database for email: " + email);
                 });
 
-            UserDto userDto = new UserDto(user.getId(), user.getName(), user.getEmail(), user.getProviderId()); 
+            UserDto userDto = new UserDto(user.getId().toString(), user.getName(), user.getEmail(), user.getProviderId()); 
             logger.info("Returning details for user: {}", userDto.getEmail());
             return ResponseEntity.ok(userDto);
         } catch (EntityNotFoundException e) {

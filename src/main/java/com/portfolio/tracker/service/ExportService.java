@@ -32,7 +32,7 @@ public class ExportService {
             int rowIdx = 1;
             for (PortfolioEntry entry : entries) {
                 Row row = sheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(entry.getId());
+                row.createCell(0).setCellValue(entry.getId().toString());
                 row.createCell(1).setCellValue(entry.getDateAdded() != null ? entry.getDateAdded().toString() : "");
                 row.createCell(2).setCellValue(entry.getType() != null ? entry.getType().toString() : "");
                 row.createCell(3).setCellValue(entry.getCurrency());
@@ -55,7 +55,7 @@ public class ExportService {
 
             for (PortfolioEntry entry : entries) {
                 csvWriter.writeNext(new String[]{
-                        String.valueOf(entry.getId()),
+                        entry.getId().toString(),
                         entry.getDateAdded() != null ? entry.getDateAdded().toString() : "",
                         entry.getType() != null ? entry.getType().toString() : "",
                         entry.getCurrency(),

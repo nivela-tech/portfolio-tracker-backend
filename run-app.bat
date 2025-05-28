@@ -30,6 +30,7 @@ echo.
 echo Starting application...
 echo Use Ctrl+C to stop the application
 echo --------------------------------------------------
+call gradlew clean build
 call gradlew bootRun
 echo --------------------------------------------------
 echo.

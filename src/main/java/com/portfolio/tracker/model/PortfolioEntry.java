@@ -5,18 +5,20 @@ import lombok.Data;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID; // Added for UUID
 
 @Data
 @Entity
 @Table(name = "portfolio_entries")
 public class PortfolioEntry {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.AUTO) // Changed strategy for UUID
+    @Column(columnDefinition = "UUID") // Added for UUID
+    private UUID id; // Changed type to UUID
 
-    @ManyToOne(fetch = FetchType.LAZY) // Changed to LAZY for User
-    @JoinColumn(name = "user_id", nullable = true) // Initially nullable for existing data
-    @JsonIgnore // To prevent serialization issues, manage via DTOs if user info needed here
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id") // Nullable true removed
+    @JsonIgnore
     private User user;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -24,12 +26,12 @@ public class PortfolioEntry {
     private PortfolioAccount account;
 
     @Transient
-    private Long accountId;
+    private UUID accountId; // Changed type to UUID
 
     public void setAccount(PortfolioAccount account) {
         this.account = account;
         if (account != null) {
-            this.accountId = account.getId();
+            this.accountId = account.getId(); // getId() will now return UUID
         } else {
             this.accountId = null;
         }

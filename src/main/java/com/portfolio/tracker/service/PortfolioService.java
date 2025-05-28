@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID; // Added import
 import java.util.stream.Collectors;
 import java.util.function.Function;
 
@@ -106,7 +107,7 @@ public class PortfolioService {
             existingEntry.setCountry(entryFromRequest.getCountry());
             existingEntry.setNotes(entryFromRequest.getNotes());
 
-            Long requestedAccountId = entryFromRequest.getAccountId();
+            UUID requestedAccountId = entryFromRequest.getAccountId();
             if (entryFromRequest.getAccount() != null && entryFromRequest.getAccount().getId() != null) {
                 requestedAccountId = entryFromRequest.getAccount().getId();
             }
@@ -137,7 +138,7 @@ public class PortfolioService {
         }
     }
 
-    public void deleteEntry(Long id, User user) {
+    public void deleteEntry(UUID id, User user) { // Changed Long to UUID
         logger.info("Deleting portfolio entry with ID: {} by user: {}", id, user.getEmail());
         try {
             PortfolioEntry entry = portfolioRepository.findByIdAndUser(id, user)
@@ -150,133 +151,247 @@ public class PortfolioService {
         } catch (EntityNotFoundException enfe) {
             logger.warn("Failed to delete entry for user {}: Entry ID {} not found or not accessible. Details: {}", user.getEmail(), id, enfe.getMessage());
             throw enfe;
-        }
-         catch (Exception e) {
+        } catch (Exception e) {
             logger.error("Failed to delete portfolio entry ID {} for user {}: {}", id, user.getEmail(), e.getMessage(), e);
             throw e;
         }
     }
 
+    public PortfolioEntry getEntryByIdAndUser(UUID id, User user) { // Changed Long to UUID
+        logger.debug("Fetching entry with ID: {} for user: {}", id, user.getEmail());
+        try {
+            PortfolioEntry entry = portfolioRepository.findByIdAndUser(id, user)
+                .orElseThrow(() -> {
+                    logger.warn("Entry not found with ID: {} for user: {}", id, user.getEmail());
+                    return new EntityNotFoundException("Entry not found with ID: " + id + " for user " + user.getEmail());
+                });
+            logger.debug("Successfully fetched entry with ID: {} for user: {}", id, user.getEmail());
+            return entry;
+        } catch (EntityNotFoundException enfe) {
+            logger.warn("Failed to fetch entry for user {}: Entry ID {} not found or not accessible. Details: {}", user.getEmail(), id, enfe.getMessage());
+            throw enfe;
+        } catch (Exception e) {
+            logger.error("Failed to fetch portfolio entry ID {} for user {}: {}", id, user.getEmail(), e.getMessage(), e);
+            throw e;
+        }
+    }
+
     public List<PortfolioEntry> getAllEntriesByUser(User user) {
-        logger.info("Fetching all portfolio entries for user: {}", user.getEmail());
-        return portfolioRepository.findByUserOrderByDateAddedDesc(user);
+        logger.debug("Fetching all entries for user: {}", user.getEmail());
+        try {
+            List<PortfolioEntry> entries = portfolioRepository.findByUser(user);
+            logger.debug("Successfully fetched {} entries for user: {}", entries.size(), user.getEmail());
+            return entries;
+        } catch (Exception e) {
+            logger.error("Failed to fetch all portfolio entries for user {}: {}", user.getEmail(), e.getMessage(), e);
+            throw e;
+        }
     }
 
-    public List<PortfolioEntry> getEntriesByAccountAndUser(Long accountId, User user) {
-        logger.info("Fetching entries for account ID: {} for user: {}", accountId, user.getEmail());
-        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user); 
-        return portfolioRepository.findByAccountAndUserOrderByDateAddedDesc(account, user);
+    public List<PortfolioEntry> getEntriesByAccountIdAndUser(UUID accountId, User user) { // Changed Long to UUID
+        logger.debug("Fetching entries for account ID: {} by user: {}", accountId, user.getEmail());
+        // First, verify the account belongs to the user to ensure data privacy and correctness
+        accountService.getAccountByIdAndUser(accountId, user); // This will throw EntityNotFoundException if not found/accessible
+        try {
+            PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
+            List<PortfolioEntry> entries = portfolioRepository.findByAccountAndUser(account, user);
+            logger.debug("Successfully fetched {} entries for account ID: {} by user: {}", entries.size(), accountId, user.getEmail());
+            return entries;
+        } catch (Exception e) {
+            logger.error("Failed to fetch portfolio entries for account ID {} and user {}: {}", accountId, user.getEmail(), e.getMessage(), e);
+            throw e;
+        }
     }
 
-    public List<PortfolioEntry> getEntriesByCurrencyAndUser(String currency, User user) {
-        logger.info("Fetching entries for currency: {} for user: {}", currency, user.getEmail());
-        return portfolioRepository.findByCurrencyAndUser(currency, user);
+    public Map<EntryType, BigDecimal> getPortfolioSummaryByUser(User user) {
+        logger.debug("Generating portfolio summary for user: {}", user.getEmail());
+        try {
+            List<PortfolioEntry> entries = portfolioRepository.findByUser(user);
+            Map<EntryType, BigDecimal> summary = entries.stream()
+                .collect(Collectors.groupingBy(
+                    PortfolioEntry::getType,
+                    Collectors.mapping(PortfolioEntry::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+                ));
+            logger.debug("Successfully generated portfolio summary for user: {}", user.getEmail());
+            return summary;
+        } catch (Exception e) {
+            logger.error("Failed to generate portfolio summary for user {}: {}", user.getEmail(), e.getMessage(), e);
+            throw e;
+        }
     }
 
-    public List<PortfolioEntry> getEntriesByCurrencyAndAccountAndUser(String currency, Long accountId, User user) {
-        logger.info("Fetching entries for currency: {}, account ID: {} for user: {}", currency, accountId, user.getEmail());
-        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
-        return portfolioRepository.findByCurrencyAndAccountAndUser(currency, account, user);
+    public Map<String, Map<EntryType, BigDecimal>> getPortfolioSummaryByAccountAndUser(User user) {
+        logger.debug("Generating portfolio summary by account for user: {}", user.getEmail());
+        try {
+            List<PortfolioAccount> accounts = accountService.getAllAccountsByUser(user);
+            Map<UUID, String> accountIdToNameMap = accounts.stream()
+                .collect(Collectors.toMap(PortfolioAccount::getId, PortfolioAccount::getName)); // Corrected: getAccountName to getName
+
+            List<PortfolioEntry> entries = portfolioRepository.findByUser(user);
+            Map<String, Map<EntryType, BigDecimal>> summaryByAccount = entries.stream()
+                .filter(entry -> entry.getAccount() != null && accountIdToNameMap.containsKey(entry.getAccount().getId()))
+                .collect(Collectors.groupingBy(
+                    entry -> accountIdToNameMap.get(entry.getAccount().getId()), // Group by account name
+                    Collectors.groupingBy(
+                        PortfolioEntry::getType,
+                        Collectors.mapping(PortfolioEntry::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+                    )
+                ));
+            logger.debug("Successfully generated portfolio summary by account for user: {}", user.getEmail());
+            return summaryByAccount;
+        } catch (Exception e) {
+            logger.error("Failed to generate portfolio summary by account for user {}: {}", user.getEmail(), e.getMessage(), e);
+            throw e;
+        }
     }
 
-    public List<PortfolioEntry> getEntriesByCountryAndUser(String country, User user) {
-        logger.info("Fetching entries for country: {} for user: {}", country, user.getEmail());
-        return portfolioRepository.findByCountryAndUser(country, user);
+    public BigDecimal getTotalPortfolioValueByUser(User user) {
+        logger.debug("Calculating total portfolio value for user: {}", user.getEmail());
+        try {
+            List<PortfolioEntry> entries = portfolioRepository.findByUser(user);
+            BigDecimal totalValue = entries.stream()
+                .map(PortfolioEntry::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            logger.debug("Successfully calculated total portfolio value for user {}: {}", user.getEmail(), totalValue);
+            return totalValue;
+        } catch (Exception e) {
+            logger.error("Failed to calculate total portfolio value for user {}: {}", user.getEmail(), e.getMessage(), e);
+            throw e;
+        }
+    }
+    
+    public Map<String, BigDecimal> getPortfolioDistributionByCountry(User user) {
+        logger.debug("Generating portfolio distribution by country for user: {}", user.getEmail());
+        try {
+            List<PortfolioEntry> entries = portfolioRepository.findByUser(user);
+            Map<String, BigDecimal> distribution = entries.stream()
+                .collect(Collectors.groupingBy(
+                    PortfolioEntry::getCountry,
+                    Collectors.mapping(PortfolioEntry::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+                ));
+            logger.debug("Successfully generated portfolio distribution by country for user: {}", user.getEmail());
+            return distribution;
+        } catch (Exception e) {
+            logger.error("Failed to generate portfolio distribution by country for user {}: {}", user.getEmail(), e.getMessage(), e);
+            throw e;
+        }
     }
 
-    public List<PortfolioEntry> getEntriesByCountryAndAccountAndUser(String country, Long accountId, User user) {
-        logger.info("Fetching entries for country: {}, account ID: {} for user: {}", country, accountId, user.getEmail());
-        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
-        return portfolioRepository.findByCountryAndAccountAndUser(country, account, user);
+    public Map<String, BigDecimal> getPortfolioDistributionByCurrency(User user) {
+        logger.debug("Generating portfolio distribution by currency for user: {}", user.getEmail());
+        try {
+            List<PortfolioEntry> entries = portfolioRepository.findByUser(user);
+            Map<String, BigDecimal> distribution = entries.stream()
+                .collect(Collectors.groupingBy(
+                    PortfolioEntry::getCurrency,
+                    Collectors.mapping(PortfolioEntry::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+                ));
+            logger.debug("Successfully generated portfolio distribution by currency for user: {}", user.getEmail());
+            return distribution;
+        } catch (Exception e) {
+            logger.error("Failed to generate portfolio distribution by currency for user {}: {}", user.getEmail(), e.getMessage(), e);
+            throw e;
+        }
     }
 
-    public List<PortfolioEntry> getEntriesBySourceAndUser(String source, User user) {
-        logger.info("Fetching entries for source: {} for user: {}", source, user.getEmail());
-        return portfolioRepository.findBySourceAndUser(source, user);
+    public List<PortfolioEntry> getCombinedEntriesByUser(User user) {
+        logger.debug("Fetching combined entries for user: {}", user.getEmail());
+        return portfolioRepository.findByUser(user);
     }
 
-    public List<PortfolioEntry> getEntriesBySourceAndAccountAndUser(String source, Long accountId, User user) {
-        logger.info("Fetching entries for source: {}, account ID: {} for user: {}", source, accountId, user.getEmail());
-        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
-        return portfolioRepository.findBySourceAndAccountAndUser(source, account, user);
-    }
-
-    public List<PortfolioEntry> getEntriesByTypeAndUser(EntryType type, User user) {
-        logger.info("Fetching entries for type: {} for user: {}", type, user.getEmail());
-        return portfolioRepository.findByTypeAndUser(type, user);
-    }
-
-    public List<PortfolioEntry> getEntriesByTypeAndAccountAndUser(EntryType type, Long accountId, User user) {
-        logger.info("Fetching entries for type: {}, account ID: {} for user: {}", type, accountId, user.getEmail());
-        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
-        return portfolioRepository.findByTypeAndAccountAndUser(type, account, user);
-    }
-
-    // Methods for combined views, user-specific
-    public List<PortfolioEntry> getCombinedPortfolioEntriesByUser(User user) {
-        logger.info("Fetching combined portfolio entries for user: {}", user.getEmail());
-        // This method might simply return all entries, or could involve more complex logic
-        // if "combined" means something specific (e.g., aggregating certain types).
-        // For now, let's assume it's all entries for the user.
-        return portfolioRepository.findByUserOrderByDateAddedDesc(user);
-    }
-
-    public Map<String, BigDecimal> getCombinedPortfolioByCurrencyUser(User user) {
-        logger.info("Fetching combined portfolio by currency for user: {}", user.getEmail());
-        List<PortfolioEntry> entries = portfolioRepository.findByUserOrderByDateAddedDesc(user);
-        return entries.stream()
+    public Map<String, BigDecimal> getCombinedEntriesByCurrencyAndUser(User user) {
+        logger.debug("Fetching portfolio grouped by currency for user: {}", user.getEmail());
+        return portfolioRepository.findByUser(user).stream()
             .collect(Collectors.groupingBy(
                 PortfolioEntry::getCurrency,
                 Collectors.mapping(PortfolioEntry::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
             ));
     }
 
-    public Map<String, BigDecimal> getCombinedPortfolioByCountryUser(User user) {
-        logger.info("Fetching combined portfolio by country for user: {}", user.getEmail());
-        List<PortfolioEntry> entries = portfolioRepository.findByUserOrderByDateAddedDesc(user);
-        return entries.stream()
+    public Map<String, BigDecimal> getCombinedEntriesByCountryAndUser(User user) {
+        logger.debug("Fetching portfolio grouped by country for user: {}", user.getEmail());
+        return portfolioRepository.findByUser(user).stream()
             .collect(Collectors.groupingBy(
                 PortfolioEntry::getCountry,
                 Collectors.mapping(PortfolioEntry::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
             ));
     }
 
-    public Map<String, BigDecimal> getCombinedPortfolioBySourceUser(User user) {
-        logger.info("Fetching combined portfolio by source for user: {}", user.getEmail());
-        List<PortfolioEntry> entries = portfolioRepository.findByUserOrderByDateAddedDesc(user);
-        return entries.stream()
+    public Map<String, BigDecimal> getCombinedEntriesBySourceAndUser(User user) {
+        logger.debug("Fetching portfolio grouped by source for user: {}", user.getEmail());
+        return portfolioRepository.findByUser(user).stream()
             .collect(Collectors.groupingBy(
                 PortfolioEntry::getSource,
                 Collectors.mapping(PortfolioEntry::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
             ));
     }
 
-    public Map<String, BigDecimal> getCombinedPortfolioByTypeUser(User user) {
-        logger.info("Fetching combined portfolio by type for user: {}", user.getEmail());
-        List<PortfolioEntry> entries = portfolioRepository.findByUserOrderByDateAddedDesc(user);
-        return entries.stream()
+    public Map<String, BigDecimal> getCombinedEntriesByTypeAndUser(User user) {
+        logger.debug("Fetching portfolio grouped by type for user: {}", user.getEmail());
+        return portfolioRepository.findByUser(user).stream()
             .collect(Collectors.groupingBy(
-                entry -> entry.getType().name(), // Group by the string representation of the EntryType enum
+                entry -> entry.getType().toString(),
                 Collectors.mapping(PortfolioEntry::getAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
             ));
     }
 
-    // Consider if these non-user specific methods are still needed or should be secured.
-    // For now, they are left as is, but typically would require admin roles.
-
-    public List<PortfolioEntry> getAllEntries() {
-        logger.info("Fetching all portfolio entries (admin/system operation)");
-        return portfolioRepository.findAllByOrderByDateAddedDesc();
+    public List<PortfolioEntry> getEntriesByCurrencyAndAccountIdAndUser(String currency, UUID accountId, User user) {
+        logger.debug("Fetching entries by currency: {} and account ID: {} for user: {}", currency, accountId, user.getEmail());
+        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
+        return portfolioRepository.findByAccountAndUser(account, user).stream()
+            .filter(entry -> currency.equals(entry.getCurrency()))
+            .collect(Collectors.toList());
     }
 
-    public List<PortfolioEntry> getEntriesByAccount(Long accountId) {
-        logger.info("Fetching entries for account ID: {} (admin/system operation)", accountId);
-        // This assumes accountService.getAccountById is an admin/system accessible method
-        // or that accountId is sufficient and doesn't need user validation here.
-        // For true multi-tenancy, this method should likely be removed or secured.
-        return portfolioRepository.findByAccount_IdOrderByDateAddedDesc(accountId);
+    public List<PortfolioEntry> getEntriesByCurrencyAndUser(String currency, User user) {
+        logger.debug("Fetching entries by currency: {} for user: {}", currency, user.getEmail());
+        return portfolioRepository.findByUser(user).stream()
+            .filter(entry -> currency.equals(entry.getCurrency()))
+            .collect(Collectors.toList());
     }
-    
-    // ... other existing non-user specific methods like getEntriesByCurrency, getEntriesByCountry etc.
-    // These should also be reviewed for security in a multi-user context.
+
+    public List<PortfolioEntry> getEntriesByCountryAndAccountIdAndUser(String country, UUID accountId, User user) {
+        logger.debug("Fetching entries by country: {} and account ID: {} for user: {}", country, accountId, user.getEmail());
+        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
+        return portfolioRepository.findByAccountAndUser(account, user).stream()
+            .filter(entry -> country.equals(entry.getCountry()))
+            .collect(Collectors.toList());
+    }
+
+    public List<PortfolioEntry> getEntriesByCountryAndUser(String country, User user) {
+        logger.debug("Fetching entries by country: {} for user: {}", country, user.getEmail());
+        return portfolioRepository.findByUser(user).stream()
+            .filter(entry -> country.equals(entry.getCountry()))
+            .collect(Collectors.toList());
+    }
+
+    public List<PortfolioEntry> getEntriesBySourceAndAccountIdAndUser(String source, UUID accountId, User user) {
+        logger.debug("Fetching entries by source: {} and account ID: {} for user: {}", source, accountId, user.getEmail());
+        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
+        return portfolioRepository.findByAccountAndUser(account, user).stream()
+            .filter(entry -> source.equals(entry.getSource()))
+            .collect(Collectors.toList());
+    }
+
+    public List<PortfolioEntry> getEntriesBySourceAndUser(String source, User user) {
+        logger.debug("Fetching entries by source: {} for user: {}", source, user.getEmail());
+        return portfolioRepository.findByUser(user).stream()
+            .filter(entry -> source.equals(entry.getSource()))
+            .collect(Collectors.toList());
+    }
+
+    public List<PortfolioEntry> getEntriesByTypeAndAccountIdAndUser(EntryType type, UUID accountId, User user) {
+        logger.debug("Fetching entries by type: {} and account ID: {} for user: {}", type, accountId, user.getEmail());
+        PortfolioAccount account = accountService.getAccountByIdAndUser(accountId, user);
+        return portfolioRepository.findByAccountAndUser(account, user).stream()
+            .filter(entry -> type.equals(entry.getType()))
+            .collect(Collectors.toList());
+    }
+
+    public List<PortfolioEntry> getEntriesByTypeAndUser(EntryType type, User user) {
+        logger.debug("Fetching entries by type: {} for user: {}", type, user.getEmail());
+        return portfolioRepository.findByUser(user).stream()
+            .filter(entry -> type.equals(entry.getType()))
+            .collect(Collectors.toList());
+    }
 }

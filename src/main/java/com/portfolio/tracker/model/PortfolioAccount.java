@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID; // Added for UUID
 
 @Data
 @Entity
@@ -14,12 +15,13 @@ import java.util.List;
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "entries"})
 public class PortfolioAccount {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.AUTO) // Changed strategy for UUID
+    @Column(columnDefinition = "UUID") // Added for UUID
+    private UUID id; // Changed type to UUID
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = true) // Initially nullable for existing data
-    @JsonIgnore // To prevent serialization issues, manage via DTOs if user info needed here
+    @JoinColumn(name = "user_id") // Nullable true removed, assuming user_id is mandatory with UUIDs
+    @JsonIgnore
     private User user;
 
     @Column(nullable = false)
