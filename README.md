@@ -1,6 +1,6 @@
-# Portfolio Tracker - Backend
+# Flamefolio - Backend
 
-This is the backend for the Portfolio Tracker application.
+This is the backend for the Flamefolio application.
 
 It is built with Java and Spring Boot.
 
