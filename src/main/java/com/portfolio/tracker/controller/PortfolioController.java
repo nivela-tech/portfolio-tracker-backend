@@ -49,7 +49,7 @@ public class PortfolioController {
         String providerId = principal.getAttribute("sub"); // Or "name" depending on provider and CustomOAuth2UserService
         return userService.findByProviderId(providerId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with provider ID: " + providerId));
-    }    @PostMapping({"", "/"}) // Handle both with and without trailing slash
+    }    @PostMapping("/entries") // Correct mapping for adding entries
     public ResponseEntity<PortfolioEntry> addEntry(@RequestBody PortfolioEntry entry, @AuthenticationPrincipal OAuth2User principal) {
         logger.info("Received request to add new portfolio entry");
         try {
