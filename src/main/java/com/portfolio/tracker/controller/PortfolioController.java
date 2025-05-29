@@ -61,13 +61,14 @@ public class PortfolioController {
             logger.error("Error adding portfolio entry: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-    }
-
-    @PutMapping("/{id}")
+    }    @PutMapping("/entries/{id}")
     public ResponseEntity<PortfolioEntry> updateEntry(@PathVariable UUID id, @RequestBody PortfolioEntry entry, @AuthenticationPrincipal OAuth2User principal) { // Changed Long to UUID
         logger.info("Received request to update portfolio entry with ID: {}", id);
         try {
             User currentUser = getCurrentUser(principal);
+            if (entry.getUser() != null && entry.getUser().getEmail() != null) {
+                logger.info("Using user email from request: {}", entry.getUser().getEmail());
+            }
             entry.setId(id);
             PortfolioEntry updatedEntry = portfolioService.updateEntry(entry, currentUser);
             logger.info("Successfully updated entry with ID: {} for user: {}", updatedEntry.getId(), currentUser.getEmail());
@@ -79,10 +80,8 @@ public class PortfolioController {
             logger.error("Error updating portfolio entry: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEntry(@PathVariable UUID id, @AuthenticationPrincipal OAuth2User principal) { // Changed Long to UUID
+    }    @DeleteMapping("/entries/{id}")
+    public ResponseEntity<Void> deleteEntry(@PathVariable UUID id, @RequestBody(required = false) Map<String, Object> payload, @AuthenticationPrincipal OAuth2User principal) { // Changed Long to UUID
         logger.info("Received request to delete portfolio entry with ID: {}", id);
         try {
             User currentUser = getCurrentUser(principal);
