@@ -1,5 +1,4 @@
-[providers]
-java = "21"
+providers = ["java"]
 
 [phases.setup]
 nixPkgs = ["openjdk21"]
