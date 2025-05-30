@@ -11,9 +11,9 @@ It is built with Java and Spring Boot.
 
 ## Database Management
 
-This project uses manual database management (no Liquibase). See `DATABASE_MANAGEMENT.md` for details on the database setup and management approach.
+This project uses Liquibase for database migrations. See `LIQUIBASE_GUIDE.md` for details on how to work with database migrations.
 
-## Running the application
+## Local Development
 
 Before running the application, ensure that:
 1. The PostgreSQL database is set up according to the instructions in `POSTGRES_SETUP.md`
@@ -22,51 +22,44 @@ Before running the application, ensure that:
 To run the backend server, navigate to the `backend` directory and use the following command:
 
 ```bash
-./gradlew bootRun
+./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
 Alternatively, you can use:
 - The provided batch script: `run-app.bat`
 - The VS Code task "Start Backend"
 
-## Railway Deployment
+## Production Deployment
 
-This application is configured for deployment on Railway with the following files:
-- `nixpacks.toml` - Configures the build environment and Java 21 setup
-- `railway.toml` - Railway-specific deployment configuration
+This application is configured for deployment on Railway. See the following guides for detailed instructions:
 
-### Environment Variables Required on Railway:
+1. `RAILWAY_DEPLOYMENT.md` - Overview of Railway deployment configuration
+2. `DEPLOYMENT_CHECKLIST.md` - Step-by-step checklist for deploying to Railway
+3. `GOOGLE_OAUTH_SETUP.md` - Instructions for configuring Google OAuth for production
 
-1. **Database Configuration:**
-   - `DATABASE_URL` - PostgreSQL connection string (automatically provided by Railway PostgreSQL service)
-   - `DB_USERNAME` - Database username (if not using Railway's auto-generated DATABASE_URL)
-   - `DB_PASSWORD` - Database password (if not using Railway's auto-generated DATABASE_URL)
+To deploy to Railway, you can use the provided scripts:
 
-2. **Application Configuration:**
-   - `PORT` - Application port (set to 8080, automatically configured)
-   - `FRONTEND_URL` - Your frontend application URL for CORS configuration
-
-3. **OAuth Configuration (if needed):**
-   - Update Google OAuth redirect URI to match your Railway deployment URL
-
-### Deployment Steps:
-
-1. Push your code to GitHub
-2. Connect your GitHub repository to Railway
-3. Add a PostgreSQL database service to your Railway project
-4. Set the required environment variables in Railway dashboard
-5. Deploy the application
-
-The application will be available at your Railway-generated URL with health checks enabled at `/actuator/health`.
-
-## Building the application
-
-To build the application, use:
 ```bash
-./gradlew clean build
+# For Windows
+./deploy-railway.ps1
+
+# For Unix/Linux
+./deploy-railway.sh
 ```
 
-Or use the provided batch script:
-```bash
-build-with-tracking.bat
-```
+### Environment Variables
+
+The following environment variables should be set in your Railway project:
+
+- `FRONTEND_URL`: The URL of the frontend application (https://firefolio.up.railway.app)
+- `GOOGLE_CLIENT_ID`: Your Google OAuth2 client ID
+- `GOOGLE_CLIENT_SECRET`: Your Google OAuth2 client secret  
+- `SPRING_PROFILES_ACTIVE`: Set to 'prod' for production environment
+
+Railway will automatically provide the following database variables:
+- `DATABASE_URL`: The PostgreSQL connection URL
+- `PGDATABASE`: Database name
+- `PGHOST`: Database host
+- `PGPASSWORD`: Database password
+- `PGPORT`: Database port
+- `PGUSER`: Database username

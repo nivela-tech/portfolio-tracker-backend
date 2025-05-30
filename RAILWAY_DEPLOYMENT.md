@@ -19,8 +19,11 @@ Database connection (provided by Railway PostgreSQL plugin):
 - `PGUSER`: Database username
 
 Application configuration:
-- `FRONTEND_URL`: The URL of the frontend application for CORS configuration
+- `FRONTEND_URL`: The URL of the frontend application (https://firefolio.up.railway.app) for CORS configuration
 - `PORT`: The port the application should run on (provided by Railway)
+- `GOOGLE_CLIENT_ID`: The client ID for Google OAuth2 authentication
+- `GOOGLE_CLIENT_SECRET`: The client secret for Google OAuth2 authentication
+- `SPRING_PROFILES_ACTIVE`: Should be set to `prod` for production deployment
 
 ### Database Migration
 
@@ -58,3 +61,12 @@ To add new database changes, follow these steps:
 4. Push to GitHub to trigger deployment
 
 See the [Liquibase Guide](LIQUIBASE_GUIDE.md) for more details on working with database migrations.
+
+## Google OAuth2 Configuration
+
+For Google OAuth2 authentication to work in production, you need to:
+
+1. Set up Google OAuth2 credentials for your production environment
+2. Configure the necessary environment variables in Railway
+
+See the [Google OAuth2 Setup Guide](GOOGLE_OAUTH_SETUP.md) for detailed instructions.
