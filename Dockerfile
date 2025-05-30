@@ -1,35 +1,20 @@
-# Multi-stage build: Frontend + Backend
+# Multi-stage build for Spring Boot backend
 
-# Stage 1: Build React frontend
-FROM node:18-alpine AS frontend-build
-
-WORKDIR /frontend
-
-# Install git to clone the frontend repository
-RUN apk add --no-cache git
-
-# Clone the frontend repository
-RUN git clone https://github.com/nivela-tech/portfolio-tracker-frontend.git .
-
-# Install dependencies and build
-RUN npm install
-RUN npm run build
-
-# Stage 2: Build Spring Boot backend
+# Stage 1: Build Spring Boot backend
 FROM eclipse-temurin:21-jdk AS backend-build
 
 # Set working directory
 WORKDIR /app
 
+# Set JAVA_HOME explicitly 
+ENV JAVA_HOME=/opt/java/openjdk
+
 # Copy gradle wrapper and build files
 COPY gradlew gradlew.bat build.gradle settings.gradle gradle.properties ./
 COPY gradle/ gradle/
 
-# Copy source code
+# Copy source code (including pre-built frontend static resources)
 COPY src/ src/
-
-# Copy built frontend to Spring Boot static resources
-COPY --from=frontend-build /frontend/build/ src/main/resources/static/
 
 # Make gradlew executable
 RUN chmod +x gradlew
@@ -37,10 +22,15 @@ RUN chmod +x gradlew
 # Configure Gradle memory settings
 ENV GRADLE_OPTS="-Xmx512m -Xms128m"
 
+# Print Java version and location for debugging
+RUN which java
+RUN java -version
+RUN echo $JAVA_HOME
+
 # Build the application with debug output
 RUN ./gradlew clean build -x check -x test --info --stacktrace
 
-# Stage 3: Runtime
+# Stage 2: Runtime
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
