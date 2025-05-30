@@ -27,7 +27,7 @@ import java.util.UUID; // Added import
 
 @RestController
 @RequestMapping({"/api/portfolio", "/api/portfolio/"}) // Handle both with and without trailing slash
-@CrossOrigin(origins = "${spring.web.cors.allowed-origins}", allowedHeaders = "*", methods = {
+@CrossOrigin(origins = "${spring.web.cors.allowed-origins}", allowedHeaders = "*", allowCredentials = "true", methods = {
     RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS
 })
 public class PortfolioController {

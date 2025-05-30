@@ -1,6 +1,6 @@
 package com.portfolio.tracker.config;
 
-import com.portfolio.tracker.service.CustomOAuth2UserService;
+import com.portfolio.tracker.service.CustomOidcUserService;
 import com.portfolio.tracker.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,8 +13,6 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import jakarta.servlet.http.HttpServletResponse;
-import java.time.LocalDateTime;
 import org.springframework.http.HttpStatus;
 
 @Configuration
@@ -25,7 +23,7 @@ public class SecurityConfig {
     private String frontendUrl;
 
     @Autowired
-    private CustomOAuth2UserService customOAuth2UserService;
+    private CustomOidcUserService customOAuth2UserService;
 
     @Autowired
     private UserService userService; // You'll create this service
@@ -36,8 +34,7 @@ public class SecurityConfig {
                 .requestMatchers("/oauth2/**", "/login/oauth2/code/google").permitAll() // Allow OAuth2 related paths
                 .requestMatchers("/actuator/**").permitAll() // Allow health checks for Railway
                 .requestMatchers("/health", "/health/", "/ping", "/ping/").permitAll() // Allow simple health endpoints
-                .requestMatchers("/api/user/me").permitAll() // Allow frontend to check auth status
-                .requestMatchers("/api/portfolio/**", "/api/accounts/**").authenticated() // Secure your API endpoints
+                .requestMatchers("/api/user/me", "/api/portfolio/**", "/api/accounts/**").authenticated() // Secure your API endpoints
                 .anyRequest().authenticated()
             ).oauth2Login(oauth2 -> oauth2
                 .userInfoEndpoint(userInfo -> userInfo
