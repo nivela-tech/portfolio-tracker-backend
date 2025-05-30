@@ -1,0 +1,18 @@
+[providers]
+java = "21"
+
+[phases.setup]
+nixPkgs = ["openjdk21"]
+
+[phases.build]
+cmds = [
+    "export JAVA_HOME=$(dirname $(dirname $(which java)))",
+    "chmod +x gradlew",
+    "./gradlew clean build -x check -x test"
+]
+
+[phases.start]
+cmd = "java -jar build/libs/portfolio-tracker-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod"
+
+[variables]
+PORT = "8080"

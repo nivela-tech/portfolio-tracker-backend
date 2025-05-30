@@ -29,6 +29,36 @@ Alternatively, you can use:
 - The provided batch script: `run-app.bat`
 - The VS Code task "Start Backend"
 
+## Railway Deployment
+
+This application is configured for deployment on Railway with the following files:
+- `nixpacks.toml` - Configures the build environment and Java 21 setup
+- `railway.toml` - Railway-specific deployment configuration
+
+### Environment Variables Required on Railway:
+
+1. **Database Configuration:**
+   - `DATABASE_URL` - PostgreSQL connection string (automatically provided by Railway PostgreSQL service)
+   - `DB_USERNAME` - Database username (if not using Railway's auto-generated DATABASE_URL)
+   - `DB_PASSWORD` - Database password (if not using Railway's auto-generated DATABASE_URL)
+
+2. **Application Configuration:**
+   - `PORT` - Application port (set to 8080, automatically configured)
+   - `FRONTEND_URL` - Your frontend application URL for CORS configuration
+
+3. **OAuth Configuration (if needed):**
+   - Update Google OAuth redirect URI to match your Railway deployment URL
+
+### Deployment Steps:
+
+1. Push your code to GitHub
+2. Connect your GitHub repository to Railway
+3. Add a PostgreSQL database service to your Railway project
+4. Set the required environment variables in Railway dashboard
+5. Deploy the application
+
+The application will be available at your Railway-generated URL with health checks enabled at `/actuator/health`.
+
 ## Building the application
 
 To build the application, use:
