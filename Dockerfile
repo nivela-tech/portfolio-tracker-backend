@@ -16,7 +16,7 @@ RUN npm ci --only=production
 RUN npm run build
 
 # Stage 2: Build Spring Boot backend
-FROM openjdk:21-jdk-slim AS backend-build
+FROM eclipse-temurin:21-jdk AS backend-build
 
 # Set working directory
 WORKDIR /app
@@ -38,7 +38,7 @@ RUN chmod +x gradlew
 RUN ./gradlew clean build -x check -x test
 
 # Stage 3: Runtime
-FROM openjdk:21-jre-slim
+FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
