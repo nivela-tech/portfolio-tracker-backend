@@ -27,6 +27,12 @@ RUN which java
 RUN java -version
 RUN echo $JAVA_HOME
 
+# Inspect the gradlew script to understand the issue
+RUN cat gradlew | grep JAVA_HOME
+
+# Fix the gradlew script to accept our JAVA_HOME
+RUN sed -i 's|/usr/lib/jvm/java-21-openjdk|/opt/java/openjdk|g' gradlew
+
 # Build the application with debug output
 RUN ./gradlew clean build -x check -x test --info --stacktrace
 
