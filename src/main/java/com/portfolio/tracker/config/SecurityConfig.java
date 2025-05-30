@@ -32,14 +32,14 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .authorizeHttpRequests(authorize -> authorize
+        http            .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/", "/index.html", "/static/**", "/manifest.json", "/favicon.ico", "/logo*.png", "/robots.txt").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/code/google").permitAll() // Allow OAuth2 related paths
+                .requestMatchers("/actuator/**").permitAll() // Allow health checks for Railway
                 .requestMatchers("/api/user/me").permitAll() // Allow frontend to check auth status
                 .requestMatchers("/api/portfolio/**", "/api/accounts/**").authenticated() // Secure your API endpoints
                 .anyRequest().authenticated()
-            )            .oauth2Login(oauth2 -> oauth2
+            ).oauth2Login(oauth2 -> oauth2
                 .userInfoEndpoint(userInfo -> userInfo
                     .oidcUserService(customOAuth2UserService) // For OpenID Connect (like Google)
                 )                

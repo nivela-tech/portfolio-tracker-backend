@@ -48,4 +48,4 @@ COPY --from=backend-build /app/build/libs/portfolio-tracker-0.0.1-SNAPSHOT.jar a
 EXPOSE 8080
 
 # Run the application
-CMD ["java", "-jar", "app.jar", "--spring.profiles.active=prod"]
+CMD ["java", "-Xmx512m", "-Xms256m", "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=200", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar", "--spring.profiles.active=prod"]
