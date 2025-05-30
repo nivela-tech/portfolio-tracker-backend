@@ -12,7 +12,7 @@ RUN apk add --no-cache git
 RUN git clone https://github.com/nivela-tech/portfolio-tracker-frontend.git .
 
 # Install dependencies and build
-RUN npm ci --only=production
+RUN npm install
 RUN npm run build
 
 # Stage 2: Build Spring Boot backend
@@ -34,8 +34,11 @@ COPY --from=frontend-build /frontend/build/ src/main/resources/static/
 # Make gradlew executable
 RUN chmod +x gradlew
 
-# Build the application
-RUN ./gradlew clean build -x check -x test
+# Configure Gradle memory settings
+ENV GRADLE_OPTS="-Xmx512m -Xms128m"
+
+# Build the application with debug output
+RUN ./gradlew clean build -x check -x test --info --stacktrace
 
 # Stage 3: Runtime
 FROM eclipse-temurin:21-jre
