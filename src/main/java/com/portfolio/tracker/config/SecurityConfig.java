@@ -31,11 +31,11 @@ public class SecurityConfig {
     private UserService userService; // You'll create this service
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http            .authorizeHttpRequests(authorize -> authorize
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {        http            .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/", "/index.html", "/static/**", "/manifest.json", "/favicon.ico", "/logo*.png", "/robots.txt").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/code/google").permitAll() // Allow OAuth2 related paths
                 .requestMatchers("/actuator/**").permitAll() // Allow health checks for Railway
+                .requestMatchers("/health", "/health/", "/ping", "/ping/").permitAll() // Allow simple health endpoints
                 .requestMatchers("/api/user/me").permitAll() // Allow frontend to check auth status
                 .requestMatchers("/api/portfolio/**", "/api/accounts/**").authenticated() // Secure your API endpoints
                 .anyRequest().authenticated()
