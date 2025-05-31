@@ -8,6 +8,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
@@ -34,7 +36,7 @@ public class SecurityConfig {
                 .requestMatchers("/oauth2/**", "/login/oauth2/code/google").permitAll() // Allow OAuth2 related paths
                 .requestMatchers("/actuator/**").permitAll() // Allow health checks for Railway
                 .requestMatchers("/health", "/health/", "/ping", "/ping/").permitAll() // Allow simple health endpoints
-                .requestMatchers("/api/user/me", "/api/portfolio/**", "/api/accounts/**").authenticated() // Secure your API endpoints
+                .requestMatchers("/api/user/me", "/api/portfolio/**", "/api/accounts/**", "/api/auth/**").authenticated() // Secure your API endpoints
                 .anyRequest().authenticated()
             ).oauth2Login(oauth2 -> oauth2
                 .userInfoEndpoint(userInfo -> userInfo
@@ -43,11 +45,17 @@ public class SecurityConfig {
                 .defaultSuccessUrl(frontendUrl + "/portfolio", true) // Redirect to frontend after login
                 // .failureUrl("/login?error=true") // Optional: handle login failure
             )            .logout(logout -> logout
-                .logoutUrl("/logout") // Explicit logout URL
+                .logoutUrl("/logout") // Default Spring Security logout URL
                 .logoutSuccessUrl(frontendUrl + "/?logout=true") // Redirect to frontend after logout
                 .invalidateHttpSession(true) // Invalidate the HTTP session
-                .deleteCookies("JSESSIONID", "XSRF-TOKEN") // Delete session and CSRF cookies
+                .deleteCookies("JSESSIONID", "XSRF-TOKEN", "remember-me", "SESSION") // Delete all auth cookies
                 .clearAuthentication(true) // Clear authentication
+                .permitAll() // Allow logout for all users
+            ).sessionManagement(session -> session
+                .sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED)
+                .maximumSessions(1) // Limit to one session per user
+                .maxSessionsPreventsLogin(false) // Allow new login to invalidate old session
+                .sessionRegistry(sessionRegistry()) // For session tracking
             ).csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 // Disable CSRF for API endpoints during development to troubleshoot 403 issues
@@ -60,6 +68,11 @@ public class SecurityConfig {
             );
         return http.build();
     }    @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    @Bean
     public AuthenticationSuccessHandler authenticationSuccessHandler() {
         return (request, response, authentication) -> {
             OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
