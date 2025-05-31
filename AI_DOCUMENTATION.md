@@ -1,6 +1,6 @@
-# Flamefolio Backend Documentation
+# Agni Folio Backend Documentation
 
-This document provides a high-level overview of the Flamefolio backend application to help AI agents work with the codebase more effectively.
+This document provides a high-level overview of the Agni Folio backend application to help AI agents work with the codebase more effectively.
 
 ## Application Structure
 

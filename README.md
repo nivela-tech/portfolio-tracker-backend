@@ -1,6 +1,6 @@
-# Flamefolio - Backend
+# Agni Folio - Backend
 
-This is the backend for the Flamefolio application.
+This is the backend for the Agni Folio application.
 
 It is built with Java and Spring Boot.
 
