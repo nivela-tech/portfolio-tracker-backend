@@ -2,7 +2,6 @@
 builder = "dockerfile"
 
 [deploy]
-# Disabled health checks to allow application to start without health check interference
-# healthcheckPath = "/actuator/health"
-# healthcheckTimeout = 300
+healthcheckPath = "/actuator/health"
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
