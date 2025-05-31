@@ -19,7 +19,7 @@ Database connection (provided by Railway PostgreSQL plugin):
 - `PGUSER`: Database username
 
 Application configuration:
-- `FRONTEND_URL`: The URL of the frontend application (https://firefolio.up.railway.app) for CORS configuration
+- `FRONTEND_URL`: The URL of the frontend application (https://www.agnifolio.com) for CORS configuration
 - `PORT`: The port the application should run on (provided by Railway)
 - `GOOGLE_CLIENT_ID`: The client ID for Google OAuth2 authentication
 - `GOOGLE_CLIENT_SECRET`: The client secret for Google OAuth2 authentication

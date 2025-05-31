@@ -39,7 +39,7 @@ if ($LASTEXITCODE -eq 0) {
     railway status
     
     Write-Host "Don't forget to set the environment variables in the Railway dashboard:" -ForegroundColor Yellow
-    Write-Host "  - FRONTEND_URL: https://firefolio.up.railway.app" -ForegroundColor Yellow
+    Write-Host "  - FRONTEND_URL: https://www.agnifolio.com" -ForegroundColor Yellow
     Write-Host "  - GOOGLE_CLIENT_ID: Your Google OAuth2 client ID" -ForegroundColor Yellow
     Write-Host "  - GOOGLE_CLIENT_SECRET: Your Google OAuth2 client secret" -ForegroundColor Yellow
     Write-Host "  - SPRING_PROFILES_ACTIVE: prod" -ForegroundColor Yellow

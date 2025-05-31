@@ -51,7 +51,7 @@ To deploy to Railway, you can use the provided scripts:
 
 The following environment variables should be set in your Railway project:
 
-- `FRONTEND_URL`: The URL of the frontend application (https://firefolio.up.railway.app)
+- `FRONTEND_URL`: The URL of the frontend application (https://www.agnifolio.com)
 - `GOOGLE_CLIENT_ID`: Your Google OAuth2 client ID
 - `GOOGLE_CLIENT_SECRET`: Your Google OAuth2 client secret  
 - `SPRING_PROFILES_ACTIVE`: Set to 'prod' for production environment

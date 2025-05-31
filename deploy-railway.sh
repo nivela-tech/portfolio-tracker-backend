@@ -41,7 +41,7 @@ if [ $? -eq 0 ]; then
     railway status
     
     echo "Don't forget to set the environment variables in the Railway dashboard:"
-    echo "  - FRONTEND_URL: https://firefolio.up.railway.app"
+    echo "  - FRONTEND_URL: https://www.agnifolio.com"
     echo "  - GOOGLE_CLIENT_ID: Your Google OAuth2 client ID"
     echo "  - GOOGLE_CLIENT_SECRET: Your Google OAuth2 client secret"
     echo "  - SPRING_PROFILES_ACTIVE: prod"

@@ -12,7 +12,7 @@ This guide provides step-by-step instructions for setting up Google OAuth2 for y
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Select your project
 3. Navigate to **APIs & Services > OAuth consent screen**
-4. Under **Authorized domains**, add `firefolio.up.railway.app`
+4. Under **Authorized domains**, add `www.agnifolio.com`
 5. Save changes
 
 ## Step 2: Create a New OAuth Client for Production
@@ -24,11 +24,11 @@ This guide provides step-by-step instructions for setting up Google OAuth2 for y
 5. Give it a descriptive name like "Firefolio Production"
 6. Under **Authorized JavaScript origins**, add:
    ```
-   https://firefolio.up.railway.app
+   https://www.agnifolio.com
    ```
 7. Under **Authorized redirect URIs**, add:
    ```
-   https://firefolio.up.railway.app/login/oauth2/code/google
+   https://www.agnifolio.com/login/oauth2/code/google
    ```
 8. Click **Create**
 9. A popup will show your new client ID and client secret - save these securely for the next step
@@ -41,7 +41,7 @@ This guide provides step-by-step instructions for setting up Google OAuth2 for y
    ```
    GOOGLE_CLIENT_ID=your-production-google-client-id
    GOOGLE_CLIENT_SECRET=your-production-google-client-secret
-   FRONTEND_URL=https://firefolio.up.railway.app
+   FRONTEND_URL=https://www.agnifolio.com
    SPRING_PROFILES_ACTIVE=prod
    ```
    
@@ -53,7 +53,7 @@ This guide provides step-by-step instructions for setting up Google OAuth2 for y
 
 After updating the configuration:
 
-1. Open `https://firefolio.up.railway.app` in your browser
+1. Open `https://www.agnifolio.com` in your browser
 2. Click on "Login with Google"
 3. You should be redirected to Google's authentication page
 4. After successful authentication, you should be redirected back to your application
