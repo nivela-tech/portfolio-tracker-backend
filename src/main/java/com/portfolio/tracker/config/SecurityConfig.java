@@ -42,11 +42,12 @@ public class SecurityConfig {
                 )                
                 .defaultSuccessUrl(frontendUrl + "/portfolio", true) // Redirect to frontend after login
                 // .failureUrl("/login?error=true") // Optional: handle login failure
-            )
-            .logout(logout -> logout
+            )            .logout(logout -> logout
+                .logoutUrl("/logout") // Explicit logout URL
                 .logoutSuccessUrl(frontendUrl + "/?logout=true") // Redirect to frontend after logout
-                .invalidateHttpSession(true)
-                .deleteCookies("JSESSIONID")
+                .invalidateHttpSession(true) // Invalidate the HTTP session
+                .deleteCookies("JSESSIONID", "XSRF-TOKEN") // Delete session and CSRF cookies
+                .clearAuthentication(true) // Clear authentication
             ).csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 // Disable CSRF for API endpoints during development to troubleshoot 403 issues

@@ -28,13 +28,11 @@ public class UserController {
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     @Autowired
-    private UserService userService;
-
-    @GetMapping("/me")
+    private UserService userService;    @GetMapping("/me")
     public ResponseEntity<?> getCurrentUserDetails(@AuthenticationPrincipal OAuth2User oAuth2User) {
         if (oAuth2User == null) {
             logger.info("No authenticated user found in session.");
-            return ResponseEntity.ok(null); 
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("No authenticated user"); 
         }
 
         String email = oAuth2User.getAttribute("email");
